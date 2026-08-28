@@ -152,11 +152,14 @@ function Tile({ label, value, total, colorClass, bar }: {
   label: string;
   value: number;
   total: number;
-  colorClass: 'amber' | 'emerald' | 'rose' | 'indigo' | 'slate';
+  colorClass: Stage | 'amber' | 'emerald' | 'rose' | 'indigo' | 'slate';
   bar: number;
 }) {
   const pct = total === 0 ? 0 : Math.round((value / total) * 100);
-  const colorBar: Record<typeof colorClass, string> = {
+  const colorBar: Record<Stage | 'amber' | 'emerald' | 'rose' | 'indigo' | 'slate', string> = {
+    primary: 'bg-amber-500',
+    junior: 'bg-emerald-500',
+    senior: 'bg-indigo-500',
     amber: 'bg-amber-500',
     emerald: 'bg-emerald-500',
     rose: 'bg-rose-500',
