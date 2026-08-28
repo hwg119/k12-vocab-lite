@@ -213,7 +213,7 @@ export const QuizMode: React.FC<QuizModeProps> = ({
 
           return (
             <button 
-              key={idx}
+              key={`${currentIndex}-${idx}`}
               disabled={hasAnswered}
               onClick={() => handleAnswer(idx)}
               className={btnClass}
