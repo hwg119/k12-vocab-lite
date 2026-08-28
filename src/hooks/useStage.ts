@@ -86,7 +86,7 @@ export interface UseStageReturn {
   markLearned: (id: string) => void;
   unmarkLearned: (id: string) => void;
   submitFeedback: (id: string, feedback: ReviewFeedback) => void;
-  recordQuizAnswer: (isCorrect: boolean) => void;
+  recordQuizAnswer: (isCorrect: boolean, wordId?: string) => void;
   resetProgress: () => void;
   focusMode: boolean;
   setFocusMode: (v: boolean) => void;
@@ -221,10 +221,20 @@ export function useStage(): UseStageReturn {
   );
 
   const recordQuizAnswer = useCallback(
-    (isCorrect: boolean) => {
+    (isCorrect: boolean, wordId?: string) => {
+      // 打卡统计
       setStudyDays(prev => recordActivity(prev, 'quizAnswer', isCorrect));
+      // 答错则加入易错本（已掌握的不重复记录）
+      if (!isCorrect && wordId) {
+        setLearnedIds(prev => {
+          // 已掌握的词不作为易错
+          if (prev.has(wordId)) return prev;
+          return prev;
+        });
+        setMistakeIds(prev => (prev.includes(wordId) ? prev : [...prev, wordId]));
+      }
     },
-    [setStudyDays],
+    [setStudyDays, setMistakeIds, setLearnedIds],
   );
 
   const resetProgress = useCallback(() => {

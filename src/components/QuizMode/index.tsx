@@ -9,7 +9,7 @@ interface QuizModeProps {
   onGoHome: () => void;
   onRestart: () => void;
   /** 用户回答后回调（true=答对，false=答错），用于打卡统计/勋章 */
-  onAnswer?: (isCorrect: boolean) => void;
+  onAnswer?: (isCorrect: boolean, wordId?: string) => void;
   /** 'daily' = 无计时；'sprint' = 有 60s 倒计时；'challenge' = 挑战模式（结算页显示挑战码） */
   mode?: 'daily' | 'sprint' | 'challenge';
   /** 挑战模式时传入 seed；最终结算页会显示「生成挑战码」按钮 */
@@ -59,9 +59,9 @@ export const QuizMode: React.FC<QuizModeProps> = ({
     if (isCorrect) {
       setScore(prev => prev + 1);
     }
-    // 通知外层用于打卡 + 勋章统计
-    onAnswer?.(isCorrect);
-  }, [currentQuestion.correctIndex, selectedOption, onAnswer]);
+    // 通知外层：打卡 + 勋章 + 易错本收集
+    onAnswer?.(isCorrect, currentQuestion.word.id);
+  }, [currentQuestion.correctIndex, currentQuestion.word.id, selectedOption, onAnswer]);
 
   // sprint 模式倒计时
   useEffect(() => {

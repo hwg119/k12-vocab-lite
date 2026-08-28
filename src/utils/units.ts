@@ -7,8 +7,8 @@ import { STAGE_META } from '../data';
  * 规则：
  *   - 按 difficulty 升序，再按 id 字典序排列（确定性输出）
  *   - 按 unitSize 切分（每个 stage 在 STAGE_META 中定义）
- *   - 第 0 关始终解锁；从第 1 关起需前一关达到 80% 才解锁
- *     （80% 阈值兼顾动机与可达性，比纯硬切换更友好）
+ *   - 第 0 关始终解锁；从第 1 关起必须"前一关 100% 完成"才解锁
+ *     （严格阈值：必须掌握前一关全部单词才能进入下一关，避免"默认前几关都解锁"）
  */
 
 export interface UnitsPlan {
@@ -21,7 +21,7 @@ export interface UnitsPlan {
   totalUnits: number;
 }
 
-const UNLOCK_THRESHOLD = 0.8;
+const UNLOCK_THRESHOLD = 1.0;
 
 export function planUnitsForStage(
   stage: Stage,
@@ -54,15 +54,17 @@ export function planUnitsForStage(
     };
   });
 
-  // 计算解锁：第一关默认；后续关卡需前一关达到阈值
-  let prevComplete = true; // 起始默认解锁
+  // 计算解锁：第一关默认解锁；后续关卡必须前一关 100% 完成才解锁
+  let prevComplete = true; // 首关起始默认解锁
   for (const u of units) {
     if (u.index === 0) {
       u.unlocked = true;
     } else {
       u.unlocked = prevComplete;
     }
-    prevComplete = u.completed || (prevComplete && learnedRatio(u.wordIds, learnedIds) >= UNLOCK_THRESHOLD);
+    prevComplete =
+      u.completed ||
+      (prevComplete && learnedRatio(u.wordIds, learnedIds) >= UNLOCK_THRESHOLD);
   }
 
   const currentIndex = units.findIndex(u => !u.completed);

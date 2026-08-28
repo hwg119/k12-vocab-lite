@@ -4,6 +4,7 @@ export { QuizMode } from './QuizMode';
 export { QuizEntry } from './QuizEntry';
 export { ChallengeInput } from './ChallengeInput';
 export { ChallengeResult } from './ChallengeResult';
+export { EdgeSwipeIndicator } from './EdgeSwipeIndicator';
 export { WordList } from './WordList';
 export { MistakesView } from './WordList/MistakesView';
 export { StageSwitcher } from './StageSwitcher';

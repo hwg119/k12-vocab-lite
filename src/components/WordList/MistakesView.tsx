@@ -48,7 +48,7 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
           className="flex items-center gap-1 text-sm text-slate-500 hover:text-indigo-600 transition-colors"
         >
           <IconArrowLeft className="w-4 h-4" />
-          Back Home
+          回首页
         </button>
         <h2 className="text-xl font-bold text-slate-800">易错生词本</h2>
         <div className="w-16"></div>

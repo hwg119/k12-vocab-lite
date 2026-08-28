@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Word, AppView } from './types';
 import { STAGE_META } from './data';
 import {
@@ -12,6 +12,7 @@ import {
   buildChallengeQuestions,
 } from './utils';
 import { useStage } from './hooks';
+import { useEdgeSwipe } from './hooks/useEdgeSwipe';
 import {
   Dashboard,
   StudyMode,
@@ -19,6 +20,7 @@ import {
   QuizEntry,
   ChallengeInput,
   ChallengeResult,
+  EdgeSwipeIndicator,
   WordList,
   MistakesView,
   StageSwitcher,
@@ -78,6 +80,26 @@ export default function App() {
   const confusionCount = useMemo(() => groupConfusionPairs(words).length, [words]);
 
   const [view, setView] = useState<AppView>('dashboard');
+  // 视图历史栈（用于边缘滑动返回）
+  const viewHistoryRef = useRef<AppView[]>([]);
+  const lastViewRef = useRef<AppView>('dashboard');
+  // 边缘滑动返回：从栈中弹一个
+  const goBackView = useCallback(() => {
+    setView(prev => {
+      const stack = viewHistoryRef.current;
+      if (stack.length === 0) return prev;
+      let target = stack.pop() as AppView;
+      // 从 quiz/study/challengeInput 退出时：跳过连续的同类页面
+      if (prev === 'quiz' || prev === 'study' || prev === 'challengeInput') {
+        while (stack.length > 0 && (target === 'quiz' || target === 'study' || target === 'challengeInput')) {
+          target = stack.pop() as AppView;
+        }
+        if (target === 'quiz' || target === 'study' || target === 'challengeInput') target = 'dashboard';
+      }
+      lastViewRef.current = target;
+      return target;
+    });
+  }, []);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [studyQueue, setStudyQueue] = useState<Word[]>([]);
   const [studySource, setStudySource] = useState<'default' | 'review' | 'mistakes' | 'unit'>('default');
@@ -195,13 +217,32 @@ export default function App() {
 
   // 挑战模式重玩（答完对方题后，用新 seed 再出一套题让好友玩）
 
-  // 切到下一个 view 时清残留队列
+  // 切到下一个 view 时清残留队列 + 维护返回栈
   useEffect(() => {
     if (view !== 'study') setStudyQueue([]);
     if (view !== 'quiz') setQuizQuestions([]);
+    // 维护历史栈：把「上一刻的 view」压栈
+    // 但忽略任务型页面（quiz/study/challengeInput）作为"上一刻"，避免返回栈塞满
+    if (lastViewRef.current !== view) {
+      const TASK_PAGES: AppView[] = ['quiz', 'study', 'challengeInput'];
+      const prev = lastViewRef.current;
+      // 跳过任务型页面（它们被返回时会一次性跳到非任务页）
+      if (!TASK_PAGES.includes(prev)) {
+        viewHistoryRef.current.push(prev);
+        if (viewHistoryRef.current.length > 50) viewHistoryRef.current.shift();
+      }
+      // 跳回首页清空栈（用户语义上"重新开始"）
+      if (view === 'dashboard') {
+        viewHistoryRef.current = [];
+      }
+      lastViewRef.current = view;
+    }
   }, [view]);
 
   const toggleSidebar = useCallback(() => setIsSidebarOpen(p => !p), []);
+
+  // 移动端边缘滑动返回：左右两侧都可触发
+  useEdgeSwipe(goBackView);
 
   const handleReset = useCallback(() => {
     if (window.confirm(`确定要清空【${STAGE_META[stage].title}】学段全部学习数据吗？\n其他学段不受影响。`)) {
@@ -536,6 +577,9 @@ export default function App() {
           </nav>
         </div>
       </div>
+
+      {/* 移动端边缘滑动返回提示 */}
+      <EdgeSwipeIndicator enabled={view !== 'dashboard'} />
     </ErrorBoundary>
   );
 }

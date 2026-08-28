@@ -139,7 +139,7 @@ export const UnitsView: React.FC<UnitsViewProps> = ({
 
       {/* 说明 */}
       <div className="mt-6 text-xs text-slate-400 text-center">
-        完成当前单元 80% 即解锁下一单元。点击可学习的单元即可进入专项闯关。
+        必须 100% 完成当前单元的所有单词才能解锁下一单元。点击可学习的单元即可进入专项闯关。
       </div>
     </div>
   );
