@@ -48,7 +48,7 @@ export const STAGE_META: Record<Stage, StageMeta> = {
   senior: {
     id: 'senior',
     title: '高中',
-    subtitle: '高考核心词汇',
+    subtitle: '高中核心词汇',
     unitSize: 50,
     color: 'indigo',
   },

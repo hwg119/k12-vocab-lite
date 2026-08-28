@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# Gaokao Vocab Master 启动脚本
+# K12 Vocab Master 启动脚本
 # 用于检查并启动服务
 
 echo "=========================================="
-echo "  Gaokao Vocab Master 服务管理脚本"
+echo "  K12 Vocab Master 服务管理脚本"
 echo "=========================================="
 echo ""
 

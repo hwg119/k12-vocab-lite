@@ -10,9 +10,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
-        name: '高考单词大师 (Gaokao Vocab Master)',
+        name: 'K12单词大师 (K12 Vocab Master)',
         short_name: '单词大师',
-        description: '3500个高考英语单词高效背诵与测试，助你轻松攻克英语词汇关！',
+        description: 'K12全学段英语单词记忆 · 小学/初中/高中三学段 · SM2间隔重复 · 纯前端零后端',
         theme_color: '#4f46e5',
         background_color: '#f8fafc',
         display: 'standalone',
