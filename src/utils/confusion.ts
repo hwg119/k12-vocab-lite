@@ -35,12 +35,16 @@ export function groupConfusionPairs(words: Word[]): ConfusionGroup[] {
 }
 
 /**
- * 自动形近检测：找出长度差 ≤ 1、编辑距离 ≤ 1 的单词组
+ * 自动形近检测：找出长度差 ≤ 1、编辑距离 ≤ 1 的"小型"配对
  *
- * 实现策略（避免 O(n²)）：
+ * 设计要点（避免 union-find 链式传递导致"巨型团"）：
  *   1. 仅保留字母词，长度 3-12
- *   2. 按长度分桶（同一长度的桶里取编辑距离 ≤ 1 的对）
- *   3. 用 union-find 合并传递相似的组（a-b, b-c → a,b,c 一组）
+ *   2. 按长度分桶 + 跨相邻长度桶取编辑距离 ≤ 1 的对
+ *   3. 用"贪心分组 + 容量限制"取代 union-find：
+ *      - 每对 (a, b) 优先尝试合并已有组（如果 a、b 都空闲）
+ *      - 否则新建一个 2 成员组
+ *      - 已分配到组的成员直接跳过（避免通过中间词 a→b→c 形成长链）
+ *   4. 组内上限 3 个成员，溢出忽略
  *
  * 适用场景举例：
  *   - adapt / adopt（长度 5，1 替换）
@@ -66,13 +70,18 @@ function detectSimilarPairs(words: Word[]): Word[][] {
     buckets.get(len)!.push(w);
   }
 
-  // 桶编号（用于跨桶连接长度差 = 1 的桶）
   const lenList = [...buckets.keys()].sort((a, b) => a - b);
-  const lenToIdx = new Map<number, number>();
-  lenList.forEach((l, i) => lenToIdx.set(l, i));
 
-  // 找所有相似的对（同桶内 + 相邻桶）
+  // 收集所有形近对（同桶 + 相邻桶），按字典序去重
+  const pairSet = new Set<string>();
   const pairs: Array<[Word, Word]> = [];
+  const consider = (a: Word, b: Word) => {
+    if (editDistance(a.english, b.english) > 1) return;
+    const key = a.id < b.id ? `${a.id}|${b.id}` : `${b.id}|${a.id}`;
+    if (pairSet.has(key)) return;
+    pairSet.add(key);
+    pairs.push([a, b]);
+  };
   for (let bi = 0; bi < lenList.length; bi++) {
     const lenA = lenList[bi];
     const bucketA = buckets.get(lenA)!;
@@ -80,58 +89,43 @@ function detectSimilarPairs(words: Word[]): Word[][] {
     // 桶内两两
     for (let i = 0; i < bucketA.length; i++) {
       for (let j = i + 1; j < bucketA.length; j++) {
-        const a = bucketA[i].english;
-        const b = bucketA[j].english;
-        if (editDistance(a, b) <= 1) {
-          pairs.push([bucketA[i], bucketA[j]]);
-        }
+        consider(bucketA[i], bucketA[j]);
       }
     }
-    // 与下一个长度桶配对（差 1）
+    // 与下一个长度桶
     const nextLen = lenA + 1;
     if (!buckets.has(nextLen)) continue;
     const bucketB = buckets.get(nextLen)!;
     for (const wa of bucketA) {
-      for (const wb of bucketB) {
-        if (editDistance(wa.english, wb.english) <= 1) {
-          pairs.push([wa, wb]);
-        }
-      }
+      for (const wb of bucketB) consider(wa, wb);
     }
   }
 
   if (pairs.length === 0) return [];
 
-  // union-find 合并（迭代式避免栈爆）
-  const parent = new Map<string, string>();
-  // 初始化：每个词自己是 root
-  for (const w of candidates) parent.set(w.id, w.id);
-  const find = (id: string): string => {
-    let cur = id;
-    while (parent.get(cur) !== cur) cur = parent.get(cur)!;
-    // 路径压缩
-    let node = id;
-    while (parent.get(node) !== cur) {
-      const next = parent.get(node)!;
-      parent.set(node, cur);
-      node = next;
-    }
-    return cur;
-  };
-  const union = (a: Word, b: Word) => {
-    const ra = find(a.id), rb = find(b.id);
-    if (ra !== rb) parent.set(ra, rb);
-  };
-  for (const [a, b] of pairs) union(a, b);
+  // 贪心分组：每个成员最多出现在一个组里；组容量上限 3
+  const MAX_GROUP = 3;
+  const used = new Set<string>();
+  const groups: Word[][] = [];
 
-  // 收集组（≥2 成员）
-  const groups = new Map<string, Word[]>();
-  for (const w of candidates) {
-    const root = find(w.id);
-    if (!groups.has(root)) groups.set(root, []);
-    groups.get(root)!.push(w);
+  for (const [a, b] of pairs) {
+    if (used.has(a.id) || used.has(b.id)) continue;
+    groups.push([a, b]);
+    used.add(a.id);
+    used.add(b.id);
+    // 尝试扩展：找第三个成员 c，且与 a 或 b 形近，且 a、b 当前都还"仅与 c 共享一组"
+    for (const w of candidates) {
+      if (used.has(w.id)) continue;
+      if (groups[groups.length - 1].length >= MAX_GROUP) break;
+      // 选取"已加入组成员" 中某个 word 作为锚点，要求锚点与 w 形近
+      const anchor = groups[groups.length - 1].find(x => editDistance(x.english, w.english) <= 1);
+      if (!anchor) continue;
+      groups[groups.length - 1].push(w);
+      used.add(w.id);
+    }
   }
-  return [...groups.values()].filter(g => g.length >= 2);
+
+  return groups.filter(g => g.length >= 2);
 }
 
 /** Levenshtein 编辑距离（O(n*m)，仅对小字符串调用） */

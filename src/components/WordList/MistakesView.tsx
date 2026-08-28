@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { Word, SrsState } from '../../types';
-import { IconArrowLeft } from '../Icons';
+import { ALL_WORDS } from '../../data';
+import { matchWordKey } from '../../utils';
+import { IconArrowLeft, IconTrash } from '../Icons';
 
 interface MistakesViewProps {
   words: Word[];
@@ -9,6 +11,8 @@ interface MistakesViewProps {
   onGoHome: () => void;
   /** 进入专项复习 - 直接复用 StudyMode 的队列模式 */
   onStartReview: (queue: Word[]) => void;
+  /** 一键清空错词（不弹窗，需要用户自己二次确认） */
+  onClearMistakes: () => void;
 }
 
 /**
@@ -17,6 +21,7 @@ interface MistakesViewProps {
  * - 自动汇总本学段标记为「易错」的单词
  * - 按错误次数降序
  * - 支持"专项复习"按钮：把易错词队列灌给学习模式
+ * - 支持"清空错词"按钮：清空当前学段易错本
  */
 export const MistakesView: React.FC<MistakesViewProps> = ({
   words,
@@ -24,17 +29,44 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
   srsMap,
   onGoHome,
   onStartReview,
+  onClearMistakes,
 }) => {
-  // 按错误次数降序 + 提取有效单词
+  // 二次确认态
+  const [confirming, setConfirming] = useState(false);
+  // 提取有效单词 + 错误次数（missing srsState 视为 0 次，但仍在 mistakeIds 中就算"易错"）
+  // 支持多种 key 形式：
+  //   - 新格式 wordKey: 'w:english|chinese'
+  //   - 旧 id 格式: 'wd_xxx'
+  // 先用当前学段查；若找不到，回退到所有学段的合并词表
+  const allWords = useMemo<Word[]>(() => [...words, ...ALL_WORDS], [words]);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useMemo(() => {
+    console.log('[MistakesView] mistakeIds总数:', mistakeIds.length, '当前学段词数:', words.length);
+    if (mistakeIds.length > 0) {
+      console.log('[MistakesView] mistakeIds 前 10:', mistakeIds.slice(0, 10));
+      console.log('[MistakesView] 当前学段首 3 个 wordKey:', words.slice(0, 3).map(w => ({ id: w.id, key: `w:${w.english}|${w.chinese}` })));
+    }
+    try {
+      for (const stage of ['primary', 'junior', 'senior']) {
+        const raw = window.localStorage.getItem(`k12-vocab-mistakes-${stage}`);
+        if (raw) console.log(`[MistakesView] localStorage ${stage}:`, raw.slice(0, 200));
+      }
+    } catch {}
+    return null;
+  }, [mistakeIds.length]);
+
   const sortedWords = mistakeIds
-    .map(id => {
-      const w = words.find(x => x.id === id);
+    .map((id, idx) => {
+      const w = matchWordKey(allWords, id);
       if (!w) return null;
-      const srs = srsMap[id];
-      return { word: w, wrong: srs?.wrongCount ?? 0 };
+      // srsMap 同时支持 key 和旧 id
+      const srs = srsMap[id] ?? srsMap[w.id] ?? srsMap[`w:${w.english}|${w.chinese}`];
+      return { word: w, wrong: srs?.wrongCount ?? 0, idx };
     })
-    .filter((x): x is { word: Word; wrong: number } => x !== null && x.wrong > 0)
-    .sort((a, b) => b.wrong - a.wrong);
+    .filter((x): x is { word: Word; wrong: number; idx: number } => x !== null)
+    // 主排序：错次多 → 少；同错次：先加入 mistakeIds 的在前
+    .sort((a, b) => (b.wrong - a.wrong) || (a.idx - b.idx));
 
   const total = sortedWords.length;
   const reviewableQueue = sortedWords.map(s => s.word);
@@ -55,19 +87,54 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
       </div>
 
       {total === 0 ? (
-        <div className="bg-white rounded-2xl p-12 text-center border border-slate-100">
-          <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
-            🎯
+        <>
+          <div className="bg-white rounded-2xl p-12 text-center border border-slate-100 mb-4">
+            <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
+              🎯
+            </div>
+            <h3 className="text-lg font-bold text-slate-800 mb-2">暂无易错词</h3>
+            <p className="text-slate-500 text-sm">
+              回答时标记"模糊"或"不认识"的词会自动收纳到这里，便于专项攻克。
+            </p>
           </div>
-          <h3 className="text-lg font-bold text-slate-800 mb-2">暂无易错词</h3>
-          <p className="text-slate-500 text-sm">
-            回答时标记"模糊"或"不认识"的词会自动收纳到这里，便于专项攻克。
-          </p>
-        </div>
+
+          {/* 清空错词操作区（始终可见，让用户能主动清理残留脏数据） */}
+          <div className="bg-white border border-slate-100 rounded-2xl p-4 mb-6 flex items-center justify-between">
+            <div className="text-sm text-slate-600">
+              <span className="font-medium text-slate-800">管理错词本</span>
+              <span className="ml-2 text-xs text-slate-400">清空不会影响已掌握单词</span>
+            </div>
+            {confirming ? (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-rose-500 animate-pulse">再次点击确认：</span>
+                <button
+                  onClick={() => { onClearMistakes(); setConfirming(false); }}
+                  className="px-3 py-1.5 text-xs font-medium text-white bg-rose-500 hover:bg-rose-600 rounded-md transition-colors"
+                >
+                  是的，清空
+                </button>
+                <button
+                  onClick={() => setConfirming(false)}
+                  className="px-3 py-1.5 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-md transition-colors"
+                >
+                  取消
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setConfirming(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-md transition-colors"
+              >
+                <IconTrash className="w-4 h-4" />
+                清空错词
+              </button>
+            )}
+          </div>
+        </>
       ) : (
         <>
           {/* 统计卡片 + 专项复习按钮 */}
-          <div className="bg-gradient-to-br from-rose-500 to-rose-600 rounded-2xl p-6 text-white shadow-lg mb-6">
+          <div className="bg-gradient-to-br from-rose-500 to-rose-600 rounded-2xl p-6 text-white shadow-lg mb-4">
             <p className="text-rose-100 text-xs uppercase tracking-wider">Mistakes Collection</p>
             <div className="flex items-baseline gap-2 mt-1">
               <h3 className="text-4xl font-bold">{total}</h3>
@@ -79,6 +146,39 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
             >
               开始专项复习
             </button>
+          </div>
+
+          {/* 清空错词操作区（明显位置） */}
+          <div className="bg-white border border-slate-100 rounded-2xl p-4 mb-6 flex items-center justify-between">
+            <div className="text-sm text-slate-600">
+              <span className="font-medium text-slate-800">管理错词本</span>
+              <span className="ml-2 text-xs text-slate-400">清空不会影响已掌握单词</span>
+            </div>
+            {confirming ? (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-rose-500 animate-pulse">再次点击确认：</span>
+                <button
+                  onClick={() => { onClearMistakes(); setConfirming(false); }}
+                  className="px-3 py-1.5 text-xs font-medium text-white bg-rose-500 hover:bg-rose-600 rounded-md transition-colors"
+                >
+                  是的，清空
+                </button>
+                <button
+                  onClick={() => setConfirming(false)}
+                  className="px-3 py-1.5 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-md transition-colors"
+                >
+                  取消
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setConfirming(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-md transition-colors"
+              >
+                <IconTrash className="w-4 h-4" />
+                清空错词
+              </button>
+            )}
           </div>
 
           {/* 列表 */}

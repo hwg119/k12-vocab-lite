@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Stage } from '../types';
 import { exportBundle, importBundle, downloadBundle, readBundleFromFile } from '../utils';
+import { APP_VERSION, LATEST_VERSION, PLATFORM, isUpToDate } from '../version';
 import { IconArrowLeft } from './Icons';
 
 interface SettingsViewProps {
@@ -105,6 +106,41 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </p>
         <p className="text-xs text-slate-400 mt-2">
           切换学段使用页面顶部的下拉切换器。每个学段数据完全独立。
+        </p>
+      </div>
+
+      {/* 版本信息 */}
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 mb-6">
+        <h3 className="text-lg font-bold text-slate-800 mb-3">📱 版本信息</h3>
+        <div className="grid grid-cols-2 gap-y-2 text-sm">
+          <span className="text-slate-500">当前版本</span>
+          <span className="font-mono font-bold text-slate-800">{APP_VERSION}</span>
+
+          <span className="text-slate-500">最新版本</span>
+          <span className="font-mono font-bold text-slate-800">{LATEST_VERSION}</span>
+
+          <span className="text-slate-500">运行平台</span>
+          <span className="font-mono text-slate-800">
+            {PLATFORM === 'android' ? '🤖 Android' : '🌐 Web'}
+          </span>
+
+          <span className="text-slate-500">更新状态</span>
+          <span>
+            {isUpToDate() ? (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-medium">
+                ✅ 已是最新
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-xs font-medium">
+                ⚠️ 有新版本
+              </span>
+            )}
+          </span>
+        </div>
+        <p className="mt-3 text-xs text-slate-400">
+          {PLATFORM === 'android'
+            ? '请前往 GitHub Releases 下载最新 APK 后覆盖安装；或自行重新 build 后部署。'
+            : 'Web 端：刷新页面即可拉到最新版本（PWA 自动更新）。'}
         </p>
       </div>
 

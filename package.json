@@ -1,7 +1,7 @@
 {
   "name": "k12-vocab-lite",
   "private": true,
-  "version": "2.0.0",
+  "version": "1.1.0",
   "description": "K12 全学段英语单词大师 - 小学/初中/高中三学段 · SM2 间隔重复 · 闯关勋章 · 纯前端零后端",
   "type": "module",
   "scripts": {
@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@capacitor/android": "^8.1.0",
+    "@capacitor/app": "^8.1.1",
     "@capacitor/cli": "^8.1.0",
     "@capacitor/core": "^8.1.0",
     "react": "^18.3.1",

@@ -1,4 +1,5 @@
 export { parseVocabulary, generateStableId, isPhonetic, hasChinese, isPartSpeech } from './parser';
+export { wordKey, matchWordKey } from './wordKey';
 export { shuffleArray, sample, chunk, seededRng, hashSeed } from './array';
 export { generateQuiz, calculateScore, getScoreRating } from './quiz';
 export {

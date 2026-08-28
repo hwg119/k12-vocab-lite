@@ -7,6 +7,8 @@ export {
   isPhonetic,
   hasChinese,
   isPartSpeech,
+  wordKey,
+  matchWordKey,
   shuffleArray,
   sample,
   chunk,

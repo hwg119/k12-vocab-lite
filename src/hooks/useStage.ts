@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useLocalStorage } from './useLocalStorage';
 import {
   Stage,
@@ -10,7 +10,7 @@ import {
   StudyUnit,
   Achievement,
 } from '../types';
-import { WORDS_BY_STAGE } from '../data';
+import { WORDS_BY_STAGE, ALL_WORDS } from '../data';
 import {
   createInitialSrs,
   applyReview,
@@ -19,6 +19,7 @@ import {
   evaluateAchievements,
   computeStreak,
   recordActivity,
+  wordKey,
   totalCorrect as sumCorrect,
   totalAnswered as sumAnswered,
 } from '../utils';
@@ -83,10 +84,12 @@ export interface UseStageReturn {
     longestStreak: number;
   };
 
-  markLearned: (id: string) => void;
-  unmarkLearned: (id: string) => void;
-  submitFeedback: (id: string, feedback: ReviewFeedback) => void;
-  recordQuizAnswer: (isCorrect: boolean, wordId?: string) => void;
+  markLearned: (wordOrId: Word | string) => void;
+  unmarkLearned: (wordOrId: Word | string) => void;
+  submitFeedback: (wordOrId: Word | string, feedback: ReviewFeedback) => void;
+  recordQuizAnswer: (isCorrect: boolean, word?: Word) => void;
+  /** 仅清空易错本（保留已掌握、SRS、打卡） */
+  clearMistakes: () => void;
   resetProgress: () => void;
   focusMode: boolean;
   setFocusMode: (v: boolean) => void;
@@ -118,6 +121,53 @@ export function useStage(): UseStageReturn {
   );
 
   const words = useMemo<Word[]>(() => WORDS_BY_STAGE[stage], [stage]);
+
+  // 一次性迁移：把旧格式 id（裸 id）转成 wordKey
+  // 触发条件：mistakeIds/learnedIds 里有不以 'w:' 或 'id:' 开头的项
+  useEffect(() => {
+    const wordById = new Map<string, Word>();
+    for (const w of ALL_WORDS) wordById.set(w.id, w);
+    const needsKey = (k: string) => !k.startsWith('w:') && !k.startsWith('id:');
+    const migrate = (key: string): string => {
+      if (!needsKey(key)) return key;
+      const w = wordById.get(key);
+      if (w) return wordKey(w);
+      return key; // 找不到就保留，下游会再尝试 fallback
+    };
+    let changed = false;
+    const newMistakes = mistakeIds.map(migrate);
+    if (newMistakes.some((m, i) => m !== mistakeIds[i])) {
+      // 去重保序
+      const seen = new Set<string>();
+      setMistakeIds(newMistakes.filter(m => (seen.has(m) ? false : (seen.add(m), true))));
+      changed = true;
+    }
+    const newLearned = Array.from(learnedIds).map(migrate);
+    const newLearnedSet = new Set(newLearned);
+    if (newLearnedSet.size !== learnedIds.size || [...newLearnedSet].some(k => !learnedIds.has(k))) {
+      setLearnedIds(newLearnedSet);
+      changed = true;
+    }
+    // srsMap：把旧 id 键复制为 wordKey 键
+    const oldSrsKeys = Object.keys(srsMap).filter(needsKey);
+    if (oldSrsKeys.length > 0) {
+      setSrsMap(prev => {
+        const next = { ...prev };
+        for (const k of oldSrsKeys) {
+          const w = wordById.get(k);
+          if (!w) continue;
+          const nk = wordKey(w);
+          next[nk] = next[nk] ?? prev[k];
+        }
+        return next;
+      });
+      changed = true;
+    }
+    if (changed) {
+      console.info('[useStage] 已迁移旧格式数据到 wordKey');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage]);
 
   // 关卡计算（每个 stage 重新切分）
   const units = useMemo<StudyUnit[]>(
@@ -164,31 +214,52 @@ export function useStage(): UseStageReturn {
 
   const setStage = useCallback((s: Stage) => setStageRaw(s), [setStageRaw]);
 
+  // 把 word 或 id 规范成 (key, legacyId) 键对，同时支持稳定键 + 历史数据兼容
+  const resolveKeys = (wordOrId: Word | string): { key: string; legacyId: string } => {
+    if (typeof wordOrId === 'string') {
+      return { key: wordOrId, legacyId: wordOrId };
+    }
+    return { key: wordKey(wordOrId), legacyId: wordOrId.id };
+  };
+
   const markLearned = useCallback(
-    (id: string) => {
+    (wordOrId: Word | string) => {
+      const { key, legacyId } = resolveKeys(wordOrId);
       setLearnedIds(prev => {
         const s = new Set(prev);
-        s.add(id);
+        s.add(key);
+        // 兼容旧数据：旧 id 也在 set 中则一并保留以便迁移
+        if (legacyId && legacyId !== key && s.has(legacyId)) s.add(legacyId);
         return s;
       });
-      setSrsMap(prev => (prev[id] ? prev : { ...prev, [id]: createInitialSrs() }));
-      setMistakeIds(prev => (prev.includes(id) ? prev.filter(x => x !== id) : prev));
+      setSrsMap(prev => {
+        const cur = prev[key] ?? prev[legacyId] ?? createInitialSrs();
+        if (prev[key]) return prev;
+        return { ...prev, [key]: cur, [legacyId]: cur };
+      });
+      setMistakeIds(prev => {
+        const without = prev.filter(x => x !== key && x !== legacyId);
+        return without;
+      });
     },
     [setLearnedIds, setSrsMap, setMistakeIds],
   );
 
   const unmarkLearned = useCallback(
-    (id: string) => {
+    (wordOrId: Word | string) => {
+      const { key, legacyId } = resolveKeys(wordOrId);
       setLearnedIds(prev => {
-        if (!prev.has(id)) return prev;
+        if (!prev.has(key) && !prev.has(legacyId)) return prev;
         const s = new Set(prev);
-        s.delete(id);
+        s.delete(key);
+        if (legacyId) s.delete(legacyId);
         return s;
       });
       setSrsMap(prev => {
-        if (!prev[id]) return prev;
+        if (!prev[key] && !prev[legacyId]) return prev;
         const next = { ...prev };
-        delete next[id];
+        delete next[key];
+        delete next[legacyId];
         return next;
       });
     },
@@ -196,23 +267,29 @@ export function useStage(): UseStageReturn {
   );
 
   const submitFeedback = useCallback(
-    (id: string, feedback: ReviewFeedback) => {
-      // 1. 更新 SRS 状态
+    (wordOrId: Word | string, feedback: ReviewFeedback) => {
+      const { key, legacyId } = resolveKeys(wordOrId);
+      // 1. 更新 SRS 状态（同时写 key + 旧 id 双映射）
       setSrsMap(prev => {
-        const cur = prev[id] ?? createInitialSrs();
-        return { ...prev, [id]: applyReview(cur, feedback) };
+        const cur = prev[key] ?? prev[legacyId] ?? createInitialSrs();
+        const next = applyReview(cur, feedback);
+        return { ...prev, [key]: next, [legacyId]: next };
       });
       // 2. 联动易错本与掌握集合
       if (feedback === 'know') {
         setLearnedIds(prev => {
-          if (prev.has(id)) return prev;
+          if (prev.has(key) || prev.has(legacyId)) return prev;
           const s = new Set(prev);
-          s.add(id);
+          s.add(key);
+          if (legacyId && legacyId !== key) s.add(legacyId);
           return s;
         });
-        setMistakeIds(prev => (prev.includes(id) ? prev.filter(x => x !== id) : prev));
+        setMistakeIds(prev => prev.filter(x => x !== key && x !== legacyId));
       } else {
-        setMistakeIds(prev => (prev.includes(id) ? prev : [...prev, id]));
+        setMistakeIds(prev => {
+          if (prev.includes(key) || prev.includes(legacyId)) return prev;
+          return [...prev, key];
+        });
       }
       // 3. 计入今日打卡
       setStudyDays(prev => recordActivity(prev, feedback, feedback === 'know'));
@@ -221,20 +298,31 @@ export function useStage(): UseStageReturn {
   );
 
   const recordQuizAnswer = useCallback(
-    (isCorrect: boolean, wordId?: string) => {
+    (isCorrect: boolean, word?: Word) => {
       // 打卡统计
       setStudyDays(prev => recordActivity(prev, 'quizAnswer', isCorrect));
       // 答错则加入易错本（已掌握的不重复记录）
-      if (!isCorrect && wordId) {
+      if (!isCorrect && word) {
+        const key = wordKey(word);
+        const legacyId = word.id;
         setLearnedIds(prev => {
-          // 已掌握的词不作为易错
-          if (prev.has(wordId)) return prev;
+          if (prev.has(key) || prev.has(legacyId)) return prev;
           return prev;
         });
-        setMistakeIds(prev => (prev.includes(wordId) ? prev : [...prev, wordId]));
+        // 同步更新 SRS 错误次数（同时写入 key 和旧 id，兼容历史数据）
+        setSrsMap(prev => {
+          const cur = prev[key] ?? prev[legacyId] ?? createInitialSrs();
+          const next = { ...cur, wrongCount: (cur.wrongCount ?? 0) + 1 };
+          return { ...prev, [key]: next, [legacyId]: next };
+        });
+        // mistakeIds 优先存 wordKey（稳定），但也兼容旧数据中的 legacy id
+        setMistakeIds(prev => {
+          if (prev.includes(key) || prev.includes(legacyId)) return prev;
+          return [...prev, key];
+        });
       }
     },
-    [setStudyDays, setMistakeIds, setLearnedIds],
+    [setStudyDays, setSrsMap, setMistakeIds, setLearnedIds],
   );
 
   const resetProgress = useCallback(() => {
@@ -242,6 +330,11 @@ export function useStage(): UseStageReturn {
     setSrsMap({});
     setMistakeIds([]);
   }, [setLearnedIds, setSrsMap, setMistakeIds]);
+
+  /** 仅清空易错本（保留 learnedIds、srsMap、studyDays） */
+  const clearMistakes = useCallback(() => {
+    setMistakeIds([]);
+  }, [setMistakeIds]);
 
   const setFocusMode = useCallback((v: boolean) => setFocusModeRaw(v), [setFocusModeRaw]);
 
@@ -261,6 +354,7 @@ export function useStage(): UseStageReturn {
     unmarkLearned,
     submitFeedback,
     recordQuizAnswer,
+    clearMistakes,
     resetProgress,
     focusMode,
     setFocusMode,

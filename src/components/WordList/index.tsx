@@ -6,7 +6,7 @@ import { useDebounce, useDebouncedCallback } from '../../hooks';
 interface WordListProps {
   words: Word[];
   learnedIds: Set<string>;
-  onMarkAsLearned: (id: string) => void;
+  onMarkAsLearned: (wordOrId: Word | string) => void;
   title: string;
   showMarkButton?: boolean;
 }
@@ -156,7 +156,7 @@ export const WordList: React.FC<WordListProps> = ({
                 ) : (
                   showMarkButton && (
                     <button 
-                      onClick={() => onMarkAsLearned(word.id)}
+                      onClick={() => onMarkAsLearned(word)}
                       className="shrink-0 w-7 h-7 sm:w-8 sm:h-8 text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 rounded-full flex items-center justify-center transition-all duration-200"
                       title="Mark as learned"
                     >

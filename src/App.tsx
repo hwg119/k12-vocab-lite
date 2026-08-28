@@ -13,6 +13,7 @@ import {
 } from './utils';
 import { useStage } from './hooks';
 import { useEdgeSwipe } from './hooks/useEdgeSwipe';
+import { APP_VERSION, LATEST_VERSION } from './version';
 import {
   Dashboard,
   StudyMode,
@@ -41,6 +42,7 @@ import {
   IconAlertCircle,
   IconTrophy,
   IconGrid,
+  IconQuestion,
 } from './components/Icons';
 
 /**
@@ -69,6 +71,7 @@ export default function App() {
     markLearned,
     submitFeedback,
     recordQuizAnswer,
+    clearMistakes,
     resetProgress,
     focusMode,
     setFocusMode,
@@ -79,15 +82,50 @@ export default function App() {
   // 当前学段易混词配对数量
   const confusionCount = useMemo(() => groupConfusionPairs(words).length, [words]);
 
-  const [view, setView] = useState<AppView>('dashboard');
-  // 视图历史栈（用于边缘滑动返回）
+  const [view, setViewRaw] = useState<AppView>('dashboard');
+  // 视图历史栈（用于边缘滑动返回 / 浏览器后退 / Android 返回键）
   const viewHistoryRef = useRef<AppView[]>([]);
   const lastViewRef = useRef<AppView>('dashboard');
-  // 边缘滑动返回：从栈中弹一个
+
+  /**
+   * 统一的视图切换函数：
+   *   - push 当前 view 到 history 栈
+   *   - 同步浏览器 history（让浏览器后退按钮/未来 Android 硬件返回都能用）
+   *   - 然后设置新 view
+   */
+  const setView = useCallback((next: AppView | ((prev: AppView) => AppView)) => {
+    if (typeof next === 'function') {
+      // 函数式更新：拿到 prev 再包装
+      setViewRaw(prev => {
+        const real = next(prev);
+        if (real === prev) return prev;
+        viewHistoryRef.current.push(prev);
+        lastViewRef.current = real;
+        if (typeof window !== 'undefined') {
+          try { window.history.pushState({ view: real }, '', `#${real}`); } catch {}
+        }
+        return real;
+      });
+      return;
+    }
+    setViewRaw(prev => {
+      if (next === prev) return prev;
+      viewHistoryRef.current.push(prev);
+      lastViewRef.current = next;
+      if (typeof window !== 'undefined') {
+        try { window.history.pushState({ view: next }, '', `#${next}`); } catch {}
+      }
+      return next;
+    });
+  }, []);
+
+  // 边缘滑动返回 / 浏览器返回：从栈中弹一个（不走 setView，避免再次入栈）
   const goBackView = useCallback(() => {
-    setView(prev => {
+    setViewRaw(prev => {
       const stack = viewHistoryRef.current;
-      if (stack.length === 0) return prev;
+      if (stack.length === 0) {
+        return prev; // 已在首页，不再返回
+      }
       let target = stack.pop() as AppView;
       // 从 quiz/study/challengeInput 退出时：跳过连续的同类页面
       if (prev === 'quiz' || prev === 'study' || prev === 'challengeInput') {
@@ -97,9 +135,50 @@ export default function App() {
         if (target === 'quiz' || target === 'study' || target === 'challengeInput') target = 'dashboard';
       }
       lastViewRef.current = target;
+      // 同步浏览器 history（replaceState 避免再添记录，因为浏览器已 popstate）
+      if (typeof window !== 'undefined') {
+        try { window.history.replaceState({ view: target }, '', `#${target}`); } catch {}
+      }
       return target;
     });
   }, []);
+
+  // 监听浏览器后退 / 前进按钮（popstate）→ 走 goBackView
+  useEffect(() => {
+    const onPopState = () => {
+      // 浏览器已 popstate 把 history 退了一格；我们从 ref 取上一个 view 并 replaceState（不增减）
+      goBackView();
+    };
+    window.addEventListener('popstate', onPopState);
+    // 初始占位一条 history（避免首次返回直接退出）
+    try { window.history.replaceState({ view: 'dashboard' }, '', '#dashboard'); } catch {}
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [goBackView]);
+
+  // Android 硬件返回键：Capacitor App 插件（需安装 @capacitor/app）
+  useEffect(() => {
+    let cleanup: (() => void) | undefined;
+    (async () => {
+      try {
+        const cap = (window as unknown as { Capacitor?: { isNativePlatform?: () => boolean; Plugins?: Record<string, unknown> } }).Capacitor;
+        if (!cap?.isNativePlatform?.()) return;
+        const mod = await import('@capacitor/app').catch(() => null);
+        if (!mod) return;
+        const listener = await mod.App.addListener('backButton', () => {
+          // 由 setView 历史栈决定：能返回就返回；在首页则让原生处理（退出 App）
+          if (viewHistoryRef.current.length === 0) {
+            mod.App.exitApp();
+          } else {
+            goBackView();
+          }
+        });
+        cleanup = () => { listener.remove(); };
+      } catch {
+        // 非原生环境或插件未装；忽略
+      }
+    })();
+    return () => { cleanup?.(); };
+  }, [goBackView]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [studyQueue, setStudyQueue] = useState<Word[]>([]);
   const [studySource, setStudySource] = useState<'default' | 'review' | 'mistakes' | 'unit'>('default');
@@ -301,6 +380,7 @@ export default function App() {
             <NavButton active={view === 'study'} onClick={startStudy} icon={<IconBook />} label={`开始学习${summary.dueCount > 0 ? ` (${summary.dueCount})` : ''}`} />
             <NavButton active={view === 'units'} onClick={() => setView('units')} icon={<IconGrid />} label={`闯关 (${summary.unitsCompleted}/${summary.unitsTotal})`} />
             <NavButton active={view === 'mistakes'} onClick={() => setView('mistakes')} icon={<IconAlertCircle />} label={`易错词 (${mistakeIds.length})`} />
+            <NavButton active={view === 'confusions'} onClick={() => setView('confusions')} icon={<IconQuestion />} label={`易混淆词 (${confusionCount})`} />
             <NavButton active={view === 'list'} onClick={() => setView('list')} icon={<IconList />} label="词典" />
             <NavButton active={view === 'learned'} onClick={() => setView('learned')} icon={<IconChart />} label="已掌握" />
             <NavButton active={view === 'stats'} onClick={() => setView('stats')} icon={<IconChart />} label="数据周报" />
@@ -354,6 +434,20 @@ export default function App() {
               </div>
 
               <div className="flex items-center gap-2">
+                {/* 版本号（非专注模式下显示） */}
+                {!focusMode && (
+                  <button
+                    onClick={() => setView('settings')}
+                    title="版本信息"
+                    className={`text-[10px] font-mono font-medium px-1.5 py-0.5 rounded-md transition-colors ${
+                      APP_VERSION === LATEST_VERSION
+                        ? 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'
+                        : 'text-amber-600 bg-amber-50 hover:bg-amber-100 border border-amber-200'
+                    }`}
+                  >
+                    {APP_VERSION === LATEST_VERSION ? `v${APP_VERSION}` : `v${APP_VERSION} ⚠`}
+                  </button>
+                )}
                 {/* 专注模式 toggle */}
                 <button
                   onClick={() => setFocusMode(!focusMode)}
@@ -402,7 +496,10 @@ export default function App() {
                   studyQueue={studyQueue}
                   learnedIds={learnedIds}
                   source={studySource}
-                  onSubmit={(id, fb) => submitFeedback(id, fb)}
+                  onSubmit={(id, fb) => {
+                    const w = words.find(x => x.id === id);
+                    submitFeedback(w ?? id, fb);
+                  }}
                   onGoHome={() => setView('dashboard')}
                 />
               )}
@@ -453,7 +550,10 @@ export default function App() {
                       questions={quizQuestions}
                       onGoHome={() => setView('dashboard')}
                       onRestart={restartQuiz}
-                      onAnswer={(correct) => recordQuizAnswer(correct)}
+                      onAnswer={(correct, wordId) => {
+                    const w = wordId ? quizQuestions.find(q => q.word.id === wordId)?.word : undefined;
+                    recordQuizAnswer(correct, w);
+                  }}
                       mode={quizMode}
                       challengeSeed={quizMode === 'challenge' ? challengeSeed : undefined}
                       onFinish={handleChallengeFinish}
@@ -531,6 +631,7 @@ export default function App() {
                   srsMap={srsMap}
                   onGoHome={() => setView('dashboard')}
                   onStartReview={startMistakesReview}
+                  onClearMistakes={clearMistakes}
                 />
               )}
 
