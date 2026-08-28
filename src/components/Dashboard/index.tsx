@@ -1,6 +1,7 @@
 import React from 'react';
 import { Word, Stage } from '../../types';
 import { STAGE_META } from '../../data';
+import { getStageColors } from '../../utils/colors';
 import {
   IconBook,
   IconCheck,
@@ -62,28 +63,22 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const learned = learnedIds.size;
   const progress = total > 0 ? Math.round((learned / total) * 100) : 0;
   const meta = STAGE_META[stage];
-  const colorClass = {
-    primary: 'amber',
-    junior: 'emerald',
-    senior: 'indigo',
-  }[stage];
+  const colors = getStageColors(stage);
 
   // 圆形进度环
   const ringRadius = 36;
   const ringCircum = 2 * Math.PI * ringRadius;
   const ringOffset = ringCircum * (1 - progress / 100);
-  const ringColor = `rgb(${
-    stage === 'primary' ? '245 158 11' : stage === 'junior' ? '16 185 129' : '99 102 241'
-  })`;
+  const ringColor = `rgb(${colors.ring})`;
 
   return (
     <div className="w-full max-w-4xl mx-auto animate-fade-in">
       {/* 学段标题条 */}
-      <div className={`bg-gradient-to-br from-${colorClass}-500 to-${colorClass}-600 rounded-2xl p-5 text-white shadow-lg mb-6`}>
-        <p className={`text-${colorClass}-100 text-xs uppercase tracking-wider`}>{meta.subtitle}</p>
+      <div className={`bg-gradient-to-br ${colors.gradient} rounded-2xl p-5 text-white shadow-lg mb-6`}>
+        <p className={`${colors.text} text-xs uppercase tracking-wider`}>{meta.subtitle}</p>
         <div className="flex items-baseline justify-between mt-1">
           <h2 className="text-2xl font-bold">{meta.title}英语词汇</h2>
-          <span className={`text-${colorClass}-100 text-sm`}>共 {total} 词</span>
+          <span className={`${colors.text} text-sm`}>共 {total} 词</span>
         </div>
       </div>
 

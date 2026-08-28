@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Stage } from '../types';
 import { STAGE_META, STAGE_ORDER } from '../data';
+import { getStageColors } from '../utils/colors';
 
 interface StageSwitcherProps {
   current: Stage;
@@ -25,7 +26,7 @@ export const StageSwitcher: React.FC<StageSwitcherProps> = ({ current, onChange,
         aria-expanded={open}
         aria-haspopup="listbox"
       >
-        <span className={`inline-block w-2 h-2 rounded-full bg-${meta.color}-500`}></span>
+        <span className={`inline-block w-2 h-2 rounded-full ${getStageColors(current).bar}`}></span>
         <span>{meta.title}</span>
         <span className="text-slate-400 text-xs">▾</span>
       </button>
@@ -58,7 +59,7 @@ export const StageSwitcher: React.FC<StageSwitcherProps> = ({ current, onChange,
                       isCurrent ? 'bg-indigo-50 text-indigo-700' : 'hover:bg-slate-50 text-slate-700'
                     }`}
                   >
-                    <span className={`inline-block w-2 h-2 rounded-full bg-${m.color}-500`}></span>
+                    <span className={`inline-block w-2 h-2 rounded-full ${getStageColors(stageId).bar}`}></span>
                     <span className="flex-1">
                       <span className="font-medium block">{m.title}</span>
                       <span className="text-xs text-slate-400">{m.subtitle}</span>

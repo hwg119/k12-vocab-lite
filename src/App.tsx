@@ -80,6 +80,18 @@ export default function App() {
   const [quizQuestions, setQuizQuestions] = useState<ReturnType<typeof generateQuiz>>([]);
   const [quizMode, setQuizMode] = useState<'daily' | 'sprint'>('daily');
 
+  // Tailwind JIT 需要完整类名，不能动态拼接
+  const stageBarColors: Record<string, string> = {
+    primary: 'bg-amber-500',
+    junior: 'bg-emerald-500',
+    senior: 'bg-indigo-500',
+  };
+  const stageBadgeColors: Record<string, string> = {
+    primary: 'bg-amber-600',
+    junior: 'bg-emerald-600',
+    senior: 'bg-indigo-600',
+  };
+
   const sessionSize = 50;
 
   // 启动学习模式 - SRS 优先
@@ -178,7 +190,7 @@ export default function App() {
         >
           <div className="p-6 border-b border-slate-100 flex items-center justify-between">
             <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2 whitespace-nowrap">
-              <span className={`bg-${STAGE_META[stage].color}-600 text-white rounded-lg p-1.5 text-sm`}>VM</span>
+              <span className={`${stageBadgeColors[stage]} text-white rounded-lg p-1.5 text-sm`}>VM</span>
               <span>Vocab Master</span>
             </h1>
             <button
@@ -213,7 +225,7 @@ export default function App() {
               </div>
               <div className="mt-2 w-full bg-slate-200 rounded-full h-1.5">
                 <div
-                  className={`bg-${STAGE_META[stage].color}-500 h-1.5 rounded-full transition-all duration-500`}
+                  className={`${stageBarColors[stage]} h-1.5 rounded-full transition-all duration-500`}
                   style={{ width: `${Math.round((learnedIds.size / words.length) * 100) || 0}%` }}
                 ></div>
               </div>
@@ -245,7 +257,7 @@ export default function App() {
                   </button>
                 )}
                 <h1 className="md:hidden text-lg sm:text-xl font-bold text-slate-800 flex items-center gap-2">
-                  <span className={`bg-${STAGE_META[stage].color}-600 text-white rounded-lg p-1 text-sm sm:text-base`}>VM</span>
+                  <span className={`${stageBadgeColors[stage]} text-white rounded-lg p-1 text-sm sm:text-base`}>VM</span>
                   Vocab Master
                 </h1>
               </div>
