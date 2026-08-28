@@ -1,8 +1,8 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.xuzimo.gaokao.vocab',
-  appName: '高考单词大师',
+  appId: 'com.hwg119.k12.vocab',
+  appName: 'K12单词大师',
   webDir: 'dist',
   server: {
     androidScheme: 'https'
