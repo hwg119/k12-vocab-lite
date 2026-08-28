@@ -188,7 +188,7 @@ export default function App() {
             focusMode ? 'hidden' : isSidebarOpen ? 'w-64 translate-x-0' : 'w-0 -translate-x-full overflow-hidden'
           }`}
         >
-          <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+          <div className="p-6 pt-safe border-b border-slate-100 flex items-center justify-between">
             <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2 whitespace-nowrap">
               <span className={`${stageBadgeColors[stage]} text-white rounded-lg p-1.5 text-sm`}>VM</span>
               <span>Vocab Master</span>
@@ -245,7 +245,7 @@ export default function App() {
 
         {/* 主内容区 */}
         <div className={`flex-1 flex flex-col transition-all duration-300 ${focusMode ? 'md:ml-0' : isSidebarOpen ? 'md:ml-64' : 'md:ml-0'}`}>
-          <header className={`bg-white shadow-sm shrink-0 z-30 relative ${focusMode ? 'opacity-30 hover:opacity-100 transition-opacity' : ''}`}>
+          <header className={`bg-white shadow-sm shrink-0 z-30 relative pt-safe ${focusMode ? 'opacity-30 hover:opacity-100 transition-opacity' : ''}`}>
             <div className="max-w-6xl mx-auto px-4 h-14 sm:h-16 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 {!focusMode && (

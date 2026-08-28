@@ -2,7 +2,7 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="description" content="K12单词大师 - 小学/初中/高中三学段英语单词记忆 · SM2间隔重复 · 纯前端零后端" />
     <meta name="theme-color" content="#4f46e5" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -27,6 +27,13 @@
       /* 适配 iOS 底部安全区 */
       .pb-safe {
         padding-bottom: env(safe-area-inset-bottom);
+      }
+      /* 适配顶部状态栏安全区（含 Android 刘海/挖孔） */
+      .pt-safe {
+        padding-top: env(safe-area-inset-top);
+      }
+      .mt-safe {
+        margin-top: env(safe-area-inset-top);
       }
       /* 页面加载动画 */
       @keyframes pageLoad {
