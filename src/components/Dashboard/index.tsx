@@ -121,26 +121,26 @@ export const Dashboard: React.FC<DashboardProps> = ({
             disabled={dueCount === 0}
             className={`w-full rounded-2xl p-5 text-left transition-all duration-200 border ${
               dueCount > 0
-                ? `bg-${colorClass}-50 border-${colorClass}-200 hover:shadow-md hover:-translate-y-0.5`
+                ? `bg-amber-50 ${colors.border} hover:shadow-md hover:-translate-y-0.5`
                 : 'bg-slate-50 border-slate-100 opacity-60 cursor-not-allowed'
             }`}
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className={`text-xs uppercase tracking-wider ${dueCount > 0 ? `text-${colorClass}-600` : 'text-slate-400'}`}>
+                <p className={`text-xs uppercase tracking-wider ${dueCount > 0 ? colors.textMuted : 'text-slate-400'}`}>
                   今日待复习
                 </p>
-                <p className={`text-3xl font-bold mt-1 ${dueCount > 0 ? `text-${colorClass}-700` : 'text-slate-400'}`}>
+                <p className={`text-3xl font-bold mt-1 ${dueCount > 0 ? 'text-amber-700' : 'text-slate-400'}`}>
                   {dueCount}
                 </p>
-                <p className={`text-xs mt-1 ${dueCount > 0 ? `text-${colorClass}-500` : 'text-slate-400'}`}>
+                <p className={`text-xs mt-1 ${dueCount > 0 ? 'text-amber-500' : 'text-slate-400'}`}>
                   {dueCount > 0 ? '点击开始复习' : '暂无到期词'}
                 </p>
               </div>
               <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                dueCount > 0 ? `bg-${colorClass}-200` : 'bg-slate-200'
+                dueCount > 0 ? 'bg-amber-200' : 'bg-slate-200'
               }`}>
-                <IconBook className={`w-6 h-6 ${dueCount > 0 ? `text-${colorClass}-700` : 'text-slate-400'}`} />
+                <IconBook className={`w-6 h-6 ${dueCount > 0 ? 'text-amber-700' : 'text-slate-400'}`} />
               </div>
             </div>
           </button>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Word, StudyUnit } from '../types';
 import { STAGE_META } from '../data';
+import { getStageColors } from '../utils/colors';
 import { IconArrowLeft, IconLock, IconTrophy } from './Icons';
 
 interface UnitsViewProps {
@@ -32,7 +33,7 @@ export const UnitsView: React.FC<UnitsViewProps> = ({
   onStartUnit,
 }) => {
   const meta = STAGE_META[stage];
-  const colorClass = stage === 'primary' ? 'amber' : stage === 'junior' ? 'emerald' : 'indigo';
+  const colors = getStageColors(stage);
 
   const totalDone = units.filter(u => u.completed).length;
   const totalUnits = units.length;
@@ -57,11 +58,11 @@ export const UnitsView: React.FC<UnitsViewProps> = ({
       </div>
 
       {/* 顶部进度卡 */}
-      <div className={`bg-gradient-to-br from-${colorClass}-500 to-${colorClass}-600 rounded-2xl p-6 text-white shadow-lg mb-6`}>
-        <p className={`text-${colorClass}-100 text-xs uppercase tracking-wider`}>关卡进度</p>
+      <div className={`bg-gradient-to-br ${colors.gradient} rounded-2xl p-6 text-white shadow-lg mb-6`}>
+        <p className={`${colors.text} text-xs uppercase tracking-wider`}>关卡进度</p>
         <div className="flex items-baseline gap-3 mt-1">
           <h3 className="text-3xl font-bold">{totalDone} / {totalUnits}</h3>
-          <span className={`text-${colorClass}-100 text-sm`}>单元已通关</span>
+          <span className={`${colors.text} text-sm`}>单元已通关</span>
         </div>
         <div className="mt-3 w-full bg-white/20 rounded-full h-2">
           <div
@@ -90,7 +91,7 @@ export const UnitsView: React.FC<UnitsViewProps> = ({
               : locked
                 ? 'bg-slate-100 text-slate-400 border-slate-200'
                 : isCurrent
-                  ? `bg-white border-${colorClass}-300 text-${colorClass}-700 shadow-${colorClass}-100`
+                  ? `bg-white ${colors.border} text-slate-700 ${colors.shadow}`
                   : 'bg-white border-slate-200 text-slate-700';
 
             return (
@@ -126,7 +127,7 @@ export const UnitsView: React.FC<UnitsViewProps> = ({
                 </div>
                 <div className={`w-full rounded-full h-1.5 ${unit.completed ? 'bg-white/40' : 'bg-black/10'}`}>
                   <div
-                    className={`h-1.5 rounded-full transition-all duration-500 ${unit.completed ? 'bg-white' : `bg-${colorClass}-500`}`}
+                    className={`h-1.5 rounded-full transition-all duration-500 ${unit.completed ? 'bg-white' : colors.bar}`}
                     style={{ width: `${Math.round(progress * 100)}%` }}
                   ></div>
                 </div>

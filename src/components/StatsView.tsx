@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { Word, Stage } from '../types';
 import { STAGE_META } from '../data';
+import { getStageColors } from '../utils/colors';
 import { weeklyComment } from '../utils/weekly';
 import { IconArrowLeft } from './Icons';
 
@@ -48,7 +49,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
   onGoHome,
 }) => {
   const meta = STAGE_META[stage];
-  const colorClass = stage === 'primary' ? 'amber' : stage === 'junior' ? 'emerald' : 'indigo';
+  const colors = getStageColors(stage);
 
   // 4 类互斥切分
   const total = words.length;
@@ -93,7 +94,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
 
       {/* 4 类进度 */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        <Tile label="已掌握" value={learned} total={total} colorClass={colorClass} bar={learned / Math.max(total, 1)} />
+        <Tile label="已掌握" value={learned} total={total} colorClass={stage} bar={learned / Math.max(total, 1)} />
         <Tile label="待复习" value={dueUnlearned} total={total} colorClass="amber" bar={dueUnlearned / Math.max(total, 1)} />
         <Tile label="易错词" value={mistakeUnlearned} total={total} colorClass="rose" bar={mistakeUnlearned / Math.max(total, 1)} />
         <Tile label="未学习" value={unlearned} total={total} colorClass="slate" bar={unlearned / Math.max(total, 1)} />
@@ -111,7 +112,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
                 <div className="text-xs text-slate-400">{d.studyCount}</div>
                 <div className="w-full bg-slate-100 rounded-md overflow-hidden flex-1 flex items-end">
                   <div
-                    className={`w-full bg-${colorClass}-500 transition-all duration-500`}
+                    className={`w-full ${colors.bar} transition-all duration-500`}
                     style={{ height: `${heightPct}%`, minHeight: d.studyCount > 0 ? '4px' : '0px' }}
                     title={`${day} 日 - ${d.studyCount} 学习`}
                   ></div>
@@ -124,9 +125,9 @@ export const StatsView: React.FC<StatsViewProps> = ({
       </div>
 
       {/* 周报评语 */}
-      <div className={`bg-gradient-to-br from-${colorClass}-50 to-${colorClass}-100 rounded-2xl p-6 mb-6 border border-${colorClass}-200`}>
-        <p className={`text-xs uppercase tracking-wider text-${colorClass}-600 mb-2`}>Weekly Insight</p>
-        <p className={`text-${colorClass}-900 text-base font-medium leading-relaxed`}>
+      <div className={`bg-gradient-to-br ${colors.gradientLight} rounded-2xl p-6 mb-6 border ${colors.border}`}>
+        <p className={`text-xs uppercase tracking-wider ${colors.textMuted} mb-2`}>Weekly Insight</p>
+        <p className={`${colors.textMuted} text-base font-medium leading-relaxed`}>
           {comment}
         </p>
       </div>
