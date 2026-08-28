@@ -1,0 +1,27 @@
+export { parseVocabulary, generateStableId, isPhonetic, hasChinese, isPartSpeech } from './parser';
+export { shuffleArray, sample, chunk } from './array';
+export { generateQuiz, calculateScore, getScoreRating } from './quiz';
+export {
+  createInitialSrs,
+  applyReview,
+  isDue,
+  selectDueWords,
+  pickMistakes,
+  FEEDBACK_QUALITY,
+} from './sm2';
+export { planUnitsForStage, unitProgress } from './units';
+export type { UnitsPlan } from './units';
+export {
+  recordActivity,
+  computeStreak,
+  totalCorrect,
+  totalAnswered,
+  overallAccuracy,
+} from './streak';
+export { evaluateAchievements, ACHIEVEMENT_DEFS } from './achievements';
+export type { AchievementContext, StageSummary } from './achievements';
+export { buildDailySummaries, weeklyComment } from './weekly';
+export type { DailySummary } from './weekly';
+export { groupConfusionPairs } from './confusion';
+export type { ConfusionGroup } from './confusion';
+export { exportBundle, importBundle, downloadBundle, readBundleFromFile } from './backup';

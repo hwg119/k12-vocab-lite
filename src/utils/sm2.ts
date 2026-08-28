@@ -1,0 +1,135 @@
+import { ReviewFeedback, SrsState } from '../types';
+import { shuffleArray } from './array';
+
+/**
+ * 间隔重复算法（SM2 简化版 - 三档反馈）
+ *
+ * 反馈语义：
+ *   know    → 完整 SM2 进展，EF 微增
+ *   vague   → 重置进度 + EF 小幅扣减 + 错误次数 +1
+ *   unknown → 重置进度 + EF 大幅扣减 + 错误次数 +1
+ *
+ * 设计要点：
+ *   - 三档比五档更易于高中生判断
+ *   - 「模糊」「不认识」均触发重置，符合艾宾浩斯原理
+ *   - 间隔起步 1 天，第二次复习 6 天，之后 round(prev_interval * EF)
+ */
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const MIN_EASE = 1.3;
+const DEFAULT_EASE = 2.5;
+
+/** 反馈信号 → SM2 质量评分 */
+export const FEEDBACK_QUALITY: Record<ReviewFeedback, number> = {
+  know: 5,
+  vague: 3,
+  unknown: 1,
+};
+
+/** 创建一个全新的 SRS 初始状态（dueAt=0 表示到期可立即复习） */
+export function createInitialSrs(): SrsState {
+  return {
+    repetitions: 0,
+    easeFactor: DEFAULT_EASE,
+    intervalDays: 0,
+    dueAt: 0,
+    lastReviewedAt: 0,
+    wrongCount: 0,
+  };
+}
+
+/**
+ * 应用一次复习反馈，返回新状态。
+ * 纯函数：不修改输入对象。
+ */
+export function applyReview(
+  prev: SrsState,
+  feedback: ReviewFeedback,
+  now: number = Date.now(),
+): SrsState {
+  let { repetitions, easeFactor, intervalDays, wrongCount } = prev;
+
+  if (feedback === 'know') {
+    // SM2 进展
+    easeFactor = Math.min(3.0, easeFactor + 0.1);
+    if (repetitions === 0) intervalDays = 1;
+    else if (repetitions === 1) intervalDays = 6;
+    else intervalDays = Math.max(1, Math.round(intervalDays * easeFactor));
+    repetitions += 1;
+  } else if (feedback === 'vague') {
+    easeFactor = Math.max(MIN_EASE, easeFactor - 0.15);
+    repetitions = 0;
+    intervalDays = 1;
+    wrongCount += 1;
+  } else {
+    // 'unknown' - 大幅扣减
+    easeFactor = Math.max(MIN_EASE, easeFactor - 0.30);
+    repetitions = 0;
+    intervalDays = 1;
+    wrongCount += 1;
+  }
+
+  return {
+    repetitions,
+    easeFactor: Number(easeFactor.toFixed(2)),
+    intervalDays,
+    dueAt: now + intervalDays * MS_PER_DAY,
+    lastReviewedAt: now,
+    wrongCount,
+  };
+}
+
+/** 当前是否到期（dueAt=0 视为新词，立即到期） */
+export function isDue(state: SrsState | undefined, now: number = Date.now()): boolean {
+  if (!state) return true;
+  return state.dueAt === 0 || state.dueAt <= now;
+}
+
+/**
+ * 从词库中按 SRS 优先级挑选待复习单词：
+ *   1. 到期词优先（包括错词、新词）
+ *   2. 然后从未学过的词里随机补充
+ *   3. 最后补充远期未到期词
+ * 返回不超过 limit 个的混合队列
+ */
+export function selectDueWords(
+  words: { id: string }[],
+  srsMap: Record<string, SrsState>,
+  limit: number,
+  now: number = Date.now(),
+): string[] {
+  const due: string[] = [];
+  const fresh: string[] = [];
+  const future: string[] = [];
+
+  for (const w of words) {
+    const state = srsMap[w.id];
+    if (!state) {
+      fresh.push(w.id);
+    } else if (isDue(state, now)) {
+      due.push(w.id);
+    } else {
+      future.push(w.id);
+    }
+  }
+
+  const mixed = [
+    ...shuffleArray(due),
+    ...shuffleArray(fresh),
+    ...shuffleArray(future),
+  ];
+  return mixed.slice(0, limit);
+}
+
+/** 易错排行：按 wrongCount 降序，取前 N 个 id */
+export function pickMistakes(
+  words: { id: string }[],
+  srsMap: Record<string, SrsState>,
+  limit: number,
+): string[] {
+  const ranked = words
+    .map(w => ({ id: w.id, wrong: srsMap[w.id]?.wrongCount ?? 0 }))
+    .filter(w => w.wrong > 0)
+    .sort((a, b) => b.wrong - a.wrong);
+  return ranked.slice(0, limit).map(w => w.id);
+}
