@@ -245,7 +245,7 @@ export default function App() {
 
         {/* 主内容区 */}
         <div className={`flex-1 flex flex-col transition-all duration-300 ${focusMode ? 'md:ml-0' : isSidebarOpen ? 'md:ml-64' : 'md:ml-0'}`}>
-          <header className={`bg-white shadow-sm shrink-0 z-30 relative pt-safe ${focusMode ? 'opacity-30 hover:opacity-100 transition-opacity' : ''}`}>
+          <header className={`bg-white shadow-sm shrink-0 z-30 relative pt-safe ${focusMode ? 'md:opacity-30 md:hover:opacity-100 transition-opacity' : ''}`}>
             <div className="max-w-6xl mx-auto px-4 h-14 sm:h-16 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 {!focusMode && (
@@ -256,10 +256,6 @@ export default function App() {
                     <IconMenu className="w-5 h-5" />
                   </button>
                 )}
-                <h1 className="md:hidden text-lg sm:text-xl font-bold text-slate-800 flex items-center gap-2">
-                  <span className={`${stageBadgeColors[stage]} text-white rounded-lg p-1 text-sm sm:text-base`}>VM</span>
-                  Vocab Master
-                </h1>
               </div>
 
               <div className="md:hidden">
@@ -279,19 +275,11 @@ export default function App() {
                 >
                   {focusMode ? '◉ 专注中' : '○ 专注'}
                 </button>
-                {view !== 'dashboard' && (
-                  <button
-                    onClick={() => setView('dashboard')}
-                    className="text-sm text-slate-500 hover:text-indigo-600 transition-colors font-medium px-3 py-1.5 rounded-md hover:bg-slate-100"
-                  >
-                    回首页
-                  </button>
-                )}
               </div>
             </div>
           </header>
 
-          <main className="flex-1 relative w-full overflow-y-auto overflow-x-hidden pb-20 md:pb-0">
+          <main className={`flex-1 relative w-full overflow-y-auto overflow-x-hidden ${focusMode ? 'pb-0' : 'pb-20 md:pb-0'}`}>
             <div className="max-w-6xl mx-auto min-h-full flex flex-col justify-center box-border p-3 sm:p-4 lg:p-6">
               {view === 'dashboard' && (
                 <Dashboard
@@ -440,8 +428,8 @@ export default function App() {
             </div>
           </main>
 
-          {/* Mobile Navigation */}
-          <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex justify-around p-1 pb-safe md:hidden z-50 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] h-16">
+          {/* Mobile Navigation（专注模式下隐藏） */}
+          <nav className={`fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex justify-around p-1 pb-safe md:hidden z-50 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] h-16 ${focusMode ? 'hidden' : 'flex'}`}>
             <MobileNavButton active={view === 'dashboard'} onClick={() => setView('dashboard')}>
               <IconHome />
               <span>首页</span>

@@ -15,9 +15,9 @@
 import { Stage, Word } from './types';
 import { PRIMARY_WORDS } from './data/primary';
 import { JUNIOR_WORDS } from './data/junior';
-import { SENIOR_WORDS, RAW_DATA } from './data/senior';
+import { SENIOR_WORDS } from './data/senior';
 
-export { RAW_DATA, PRIMARY_WORDS, JUNIOR_WORDS, SENIOR_WORDS };
+export { PRIMARY_WORDS, JUNIOR_WORDS, SENIOR_WORDS };
 
 /** 学段元数据 - 用于 UI 展示与单元划分 */
 export interface StageMeta {

@@ -32,7 +32,7 @@ export interface Word {
   /** 学段，缺省按 senior 处理以保证向后兼容 */
   stage?: Stage;
   /** 难度等级 1-5 */
-  difficulty?: Difficulty;
+  difficulty?: number;
   /** 趣味助记（词根/谐音/联想） */
   mnemonic?: string;
   /** 校园/考试场景化例句 */
