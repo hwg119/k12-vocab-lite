@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { QuizQuestion } from '../../types';
 import { IconCheck, IconXCircle } from '../Icons';
 import { getScoreRating } from '../../utils/quiz';
+import { encodeChallenge } from '../../utils/challenge';
 
 interface QuizModeProps {
   questions: QuizQuestion[];
@@ -9,8 +10,12 @@ interface QuizModeProps {
   onRestart: () => void;
   /** 用户回答后回调（true=答对，false=答错），用于打卡统计/勋章 */
   onAnswer?: (isCorrect: boolean) => void;
-  /** 'daily' = 无计时；'sprint' = 有 60s 倒计时 */
-  mode?: 'daily' | 'sprint';
+  /** 'daily' = 无计时；'sprint' = 有 60s 倒计时；'challenge' = 挑战模式（结算页显示挑战码） */
+  mode?: 'daily' | 'sprint' | 'challenge';
+  /** 挑战模式时传入 seed；最终结算页会显示「生成挑战码」按钮 */
+  challengeSeed?: string;
+  /** 测验结束时的回调（用于挑战模式把成绩+用时传给上层） */
+  onFinish?: (result: { score: number; timeSec: number }) => void;
 }
 
 /**
@@ -20,6 +25,7 @@ interface QuizModeProps {
  * 双模式：
  *   - daily: 固定 20 题，无计时
  *   - sprint: 限时 60 秒
+ * 挑战模式：传入 challengeSeed，结算页显示「生成挑战码」
  */
 export const QuizMode: React.FC<QuizModeProps> = ({
   questions,
@@ -27,15 +33,20 @@ export const QuizMode: React.FC<QuizModeProps> = ({
   onRestart,
   onAnswer,
   mode = 'daily',
+  challengeSeed,
+  onFinish,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [isFinished, setIsFinished] = useState(false);
   const [timeLeft, setTimeLeft] = useState(mode === 'sprint' ? 60 : 0);
+  const [challengeCode, setChallengeCode] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const startTimeRef = useRef<number>(Date.now());
 
   const currentQuestion = questions[currentIndex];
 
@@ -101,26 +112,80 @@ export const QuizMode: React.FC<QuizModeProps> = ({
     };
   }, [selectedOption, currentIndex, questions.length]);
 
+  // 进入结束状态时通知上层（仅触发一次）
+  const finishedNotifiedRef = useRef(false);
+  useEffect(() => {
+    if (!isFinished || finishedNotifiedRef.current) return;
+    finishedNotifiedRef.current = true;
+    const timeSec = Math.min(999, Math.floor((Date.now() - startTimeRef.current) / 1000));
+    onFinish?.({ score, timeSec });
+  }, [isFinished, score, onFinish]);
+
+  // 生成挑战码：调用时才编码（确保 startTime/timeSec 最新）
+  const handleGenerateCode = useCallback(() => {
+    if (!challengeSeed) return;
+    const timeSec = Math.min(999, Math.floor((Date.now() - startTimeRef.current) / 1000));
+    try {
+      const code = encodeChallenge(challengeSeed, score, timeSec);
+      setChallengeCode(code);
+    } catch (e) {
+      console.error('生成挑战码失败', e);
+    }
+  }, [challengeSeed, score]);
+
+  const handleCopyCode = useCallback(async () => {
+    if (!challengeCode) return;
+    try {
+      await navigator.clipboard.writeText(challengeCode);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // 剪贴板 API 不可用时不做处理
+    }
+  }, [challengeCode]);
+
   if (isFinished) {
     const rating = getScoreRating(score, Math.max(questions.length, 1));
-    const label = mode === 'sprint' ? '冲刺结束' : 'Quiz Complete!';
+    const label = mode === 'sprint' ? '冲刺结束' : '挑战完成！';
 
     return (
-      <div className="h-full flex flex-col items-center justify-center animate-scale-in w-full px-4 sm:px-6">
+      <div className="h-full flex flex-col items-center justify-center animate-scale-in w-full px-4 sm:px-6 overflow-y-auto">
         <div className="w-20 h-20 bg-gradient-to-tr from-indigo-100 to-purple-100 rounded-full flex items-center justify-center mb-6 shadow-inner">
           <span className="text-4xl">🏆</span>
         </div>
         <h2 className="text-2xl sm:text-3xl font-bold text-slate-800 mb-2">{label}</h2>
         <p className="text-base text-slate-500 mb-1">
           本次答对 <span className={`font-bold text-xl ${rating.color}`}>{score}</span> 题
-          {mode === 'sprint' && currentIndex < questions.length && (
-            <span className="text-slate-400 text-sm ml-2">/ 共 {questions.length} 题</span>
-          )}
-          {mode === 'daily' && (
-            <span className="text-slate-400 text-sm ml-2">/ {questions.length} 题</span>
-          )}
+          <span className="text-slate-400 text-sm ml-2">/ {questions.length} 题</span>
         </p>
-        <p className={`text-base font-medium mb-8 ${rating.color}`}>{rating.message}</p>
+        <p className={`text-base font-medium mb-6 ${rating.color}`}>{rating.message}</p>
+
+        {/* 挑战模式：生成挑战码 */}
+        {challengeSeed && (
+          <div className="w-full max-w-sm mb-4 bg-gradient-to-br from-violet-50 to-fuchsia-50 border-2 border-violet-200 rounded-2xl p-4">
+            {!challengeCode ? (
+              <button
+                onClick={handleGenerateCode}
+                className="w-full py-3 rounded-xl font-bold bg-violet-600 text-white hover:bg-violet-700 shadow-md transition-all active:scale-95 text-sm"
+              >
+                🎯 生成挑战码发给好友
+              </button>
+            ) : (
+              <div>
+                <p className="text-xs text-violet-700 font-semibold mb-2 text-center">分享给好友挑战同题</p>
+                <div className="bg-white rounded-lg p-3 mb-2 font-mono text-xl font-bold text-violet-700 text-center tracking-wider break-all">
+                  {challengeCode}
+                </div>
+                <button
+                  onClick={handleCopyCode}
+                  className="w-full py-2 rounded-lg bg-white border-2 border-violet-300 text-violet-700 hover:bg-violet-50 text-sm font-medium transition-colors"
+                >
+                  {copied ? '✓ 已复制' : '📋 复制挑战码'}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="flex gap-3 w-full max-w-sm">
           <button

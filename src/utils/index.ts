@@ -1,6 +1,13 @@
 export { parseVocabulary, generateStableId, isPhonetic, hasChinese, isPartSpeech } from './parser';
-export { shuffleArray, sample, chunk } from './array';
+export { shuffleArray, sample, chunk, seededRng, hashSeed } from './array';
 export { generateQuiz, calculateScore, getScoreRating } from './quiz';
+export {
+  generateSeed,
+  encodeChallenge,
+  decodeChallenge,
+  buildChallengeQuestions,
+} from './challenge';
+export type { ChallengeData } from './challenge';
 export {
   createInitialSrs,
   applyReview,

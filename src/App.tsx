@@ -8,6 +8,8 @@ import {
   pickMistakes,
   buildDailySummaries,
   groupConfusionPairs,
+  generateSeed,
+  buildChallengeQuestions,
 } from './utils';
 import { useStage } from './hooks';
 import {
@@ -15,6 +17,8 @@ import {
   StudyMode,
   QuizMode,
   QuizEntry,
+  ChallengeInput,
+  ChallengeResult,
   WordList,
   MistakesView,
   StageSwitcher,
@@ -78,7 +82,11 @@ export default function App() {
   const [studyQueue, setStudyQueue] = useState<Word[]>([]);
   const [studySource, setStudySource] = useState<'default' | 'review' | 'mistakes' | 'unit'>('default');
   const [quizQuestions, setQuizQuestions] = useState<ReturnType<typeof generateQuiz>>([]);
-  const [quizMode, setQuizMode] = useState<'daily' | 'sprint'>('daily');
+  const [quizMode, setQuizMode] = useState<'daily' | 'sprint' | 'challenge'>('daily');
+  // 挑战模式相关 state
+  const [challengeSeed, setChallengeSeed] = useState<string | undefined>(undefined);
+  const [opponentResult, setOpponentResult] = useState<{ score: number; timeSec: number } | null>(null);
+  const [myChallengeResult, setMyChallengeResult] = useState<{ score: number; timeSec: number } | null>(null);
 
   // Tailwind JIT 需要完整类名，不能动态拼接
   const stageBarColors: Record<string, string> = {
@@ -142,8 +150,50 @@ export default function App() {
   // 测验重玩
   const restartQuiz = useCallback(() => {
     if (quizMode === 'sprint') startQuizSprint();
-    else startQuizDaily();
-  }, [quizMode, startQuizDaily, startQuizSprint]);
+    else if (quizMode === 'challenge') {
+      // 挑战模式重玩：保持种子不变
+      if (challengeSeed) {
+        setQuizQuestions(generateQuiz(words, 20, challengeSeed));
+        setView('quiz');
+      }
+    } else startQuizDaily();
+  }, [quizMode, startQuizDaily, startQuizSprint, challengeSeed, words]);
+
+  // 发起挑战：生成 seed，出一套题
+  const startChallenge = useCallback(() => {
+    const seed = generateSeed();
+    setChallengeSeed(seed);
+    setOpponentResult(null);
+    setMyChallengeResult(null);
+    setQuizQuestions(generateQuiz(words, 20, seed));
+    setQuizMode('challenge');
+    setView('quiz');
+  }, [words]);
+
+  // 提交挑战码：进入作答
+  const acceptChallenge = useCallback((code: string) => {
+    try {
+      const { questions, opponent } = buildChallengeQuestions(words, code);
+      setChallengeSeed(opponent.seed);
+      setOpponentResult({ score: opponent.score, timeSec: opponent.timeSec });
+      setMyChallengeResult(null);
+      setQuizQuestions(questions);
+      setQuizMode('challenge');
+      setView('quiz');
+    } catch (e) {
+      // 解码失败：返回入口页并提示
+      console.error('挑战码解析失败', e);
+      alert(`挑战码无效：${(e as Error).message}`);
+      setView('quizEntry');
+    }
+  }, [words]);
+
+  // 挑战模式作答完成
+  const handleChallengeFinish = useCallback((result: { score: number; timeSec: number }) => {
+    setMyChallengeResult(result);
+  }, []);
+
+  // 挑战模式重玩（答完对方题后，用新 seed 再出一套题让好友玩）
 
   // 切到下一个 view 时清残留队列
   useEffect(() => {
@@ -321,17 +371,54 @@ export default function App() {
                   onGoHome={() => setView('dashboard')}
                   onStartDaily={startQuizDaily}
                   onStartSprint={startQuizSprint}
+                  onStartChallenge={() => {
+                    // 弹一个选择：发起挑战 vs 输入挑战码
+                    setView('challengeInput');
+                  }}
+                />
+              )}
+
+              {view === 'challengeInput' && (
+                <ChallengeInput
+                  onGoHome={() => setView('quizEntry')}
+                  onSubmit={acceptChallenge}
+                  onStartChallenge={startChallenge}
                 />
               )}
 
               {view === 'quiz' && quizQuestions.length > 0 && (
-                <QuizMode
-                  questions={quizQuestions}
-                  onGoHome={() => setView('dashboard')}
-                  onRestart={restartQuiz}
-                  onAnswer={(correct) => recordQuizAnswer(correct)}
-                  mode={quizMode}
-                />
+                <>
+                  {/* 挑战模式且我方已完成 → 显示对比页 */}
+                  {quizMode === 'challenge' && opponentResult && myChallengeResult ? (
+                    <ChallengeResult
+                      myScore={myChallengeResult.score}
+                      myTimeSec={myChallengeResult.timeSec}
+                      opponentScore={opponentResult.score}
+                      opponentTimeSec={opponentResult.timeSec}
+                      totalQuestions={quizQuestions.length}
+                      onGoHome={() => {
+                        setMyChallengeResult(null);
+                        setOpponentResult(null);
+                        setChallengeSeed(undefined);
+                        setView('dashboard');
+                      }}
+                      onRematch={() => {
+                        setMyChallengeResult(null);
+                        setView('quizEntry');
+                      }}
+                    />
+                  ) : (
+                    <QuizMode
+                      questions={quizQuestions}
+                      onGoHome={() => setView('dashboard')}
+                      onRestart={restartQuiz}
+                      onAnswer={(correct) => recordQuizAnswer(correct)}
+                      mode={quizMode}
+                      challengeSeed={quizMode === 'challenge' ? challengeSeed : undefined}
+                      onFinish={handleChallengeFinish}
+                    />
+                  )}
+                </>
               )}
 
               {view === 'units' && (

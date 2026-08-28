@@ -5,6 +5,7 @@ interface QuizEntryProps {
   onGoHome: () => void;
   onStartDaily: () => void;
   onStartSprint: () => void;
+  onStartChallenge: () => void;
 }
 
 /**
@@ -12,11 +13,13 @@ interface QuizEntryProps {
  *
  * 日常：20 题，固定节奏，适合每日打卡
  * 冲刺：限时 60 秒，看能答对多少，适合薄弱词特训
+ * 挑战：发起对战码邀请好友 PK 同题
  */
 export const QuizEntry: React.FC<QuizEntryProps> = ({
   onGoHome,
   onStartDaily,
   onStartSprint,
+  onStartChallenge,
 }) => {
   return (
     <div className="w-full max-w-2xl mx-auto animate-fade-in px-2">
@@ -32,48 +35,52 @@ export const QuizEntry: React.FC<QuizEntryProps> = ({
         <div className="w-16"></div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* 日常模式 */}
         <button
           onClick={onStartDaily}
-          className="group bg-white border-2 border-slate-200 hover:border-emerald-300 hover:bg-emerald-50 rounded-2xl p-6 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
+          className="group bg-white border-2 border-slate-200 hover:border-emerald-300 hover:bg-emerald-50 rounded-2xl p-5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
         >
-          <div className="w-14 h-14 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform">
+          <div className="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center mb-3 text-xl group-hover:scale-110 transition-transform">
             📝
           </div>
-          <h3 className="text-xl font-bold text-slate-800 mb-1">日常模式</h3>
-          <p className="text-sm text-slate-500 mb-3">
-            20 题四选一，固定节奏。适合每天打卡，跟着提示认真作答。
+          <h3 className="text-lg font-bold text-slate-800 mb-1">日常模式</h3>
+          <p className="text-xs text-slate-500">
+            20 题四选一，固定节奏，适合每日打卡。
           </p>
-          <ul className="text-xs text-slate-400 space-y-1">
-            <li>· 答错温和提示，无挫败感</li>
-            <li>· 答对累计到打卡记录</li>
-            <li>· 通过「成绩评级」给出鼓励评语</li>
-          </ul>
         </button>
 
         {/* 冲刺模式 */}
         <button
           onClick={onStartSprint}
-          className="group bg-gradient-to-br from-rose-50 to-orange-50 border-2 border-rose-200 hover:border-rose-400 rounded-2xl p-6 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
+          className="group bg-gradient-to-br from-rose-50 to-orange-50 border-2 border-rose-200 hover:border-rose-400 rounded-2xl p-5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
         >
-          <div className="w-14 h-14 rounded-2xl bg-rose-200 text-rose-700 flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform">
+          <div className="w-12 h-12 rounded-xl bg-rose-200 text-rose-700 flex items-center justify-center mb-3 text-xl group-hover:scale-110 transition-transform">
             ⚡
           </div>
-          <h3 className="text-xl font-bold text-slate-800 mb-1">冲刺模式</h3>
-          <p className="text-sm text-slate-500 mb-3">
-            限时 60 秒快速作答，看到最多能答对几题。
+          <h3 className="text-lg font-bold text-slate-800 mb-1">冲刺模式</h3>
+          <p className="text-xs text-slate-500">
+            限时 60 秒快速作答，适合突击特训。
           </p>
-          <ul className="text-xs text-slate-400 space-y-1">
-            <li>· 倒计时，时间到自动结束</li>
-            <li>· 错题立即加入易错本</li>
-            <li>· 紧张节奏，更适合突击特训</li>
-          </ul>
+        </button>
+
+        {/* 挑战模式 */}
+        <button
+          onClick={onStartChallenge}
+          className="group bg-gradient-to-br from-violet-50 to-fuchsia-50 border-2 border-violet-200 hover:border-violet-400 rounded-2xl p-5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
+        >
+          <div className="w-12 h-12 rounded-xl bg-violet-200 text-violet-700 flex items-center justify-center mb-3 text-xl group-hover:scale-110 transition-transform">
+            🎯
+          </div>
+          <h3 className="text-lg font-bold text-slate-800 mb-1">挑战好友</h3>
+          <p className="text-xs text-slate-500">
+            发起挑战码，邀请好友 PK 同题。
+          </p>
         </button>
       </div>
 
       <div className="mt-6 text-xs text-slate-400 text-center">
-        两种模式都会计入打卡统计，连续学习解锁更多勋章。
+        三种模式都会计入打卡统计，连续学习解锁更多勋章。
       </div>
     </div>
   );

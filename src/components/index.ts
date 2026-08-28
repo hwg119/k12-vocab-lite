@@ -2,6 +2,8 @@ export { Dashboard } from './Dashboard';
 export { StudyMode } from './StudyMode';
 export { QuizMode } from './QuizMode';
 export { QuizEntry } from './QuizEntry';
+export { ChallengeInput } from './ChallengeInput';
+export { ChallengeResult } from './ChallengeResult';
 export { WordList } from './WordList';
 export { MistakesView } from './WordList/MistakesView';
 export { StageSwitcher } from './StageSwitcher';

@@ -10,9 +10,15 @@ export {
   shuffleArray,
   sample,
   chunk,
+  seededRng,
+  hashSeed,
   generateQuiz,
   calculateScore,
   getScoreRating,
+  generateSeed,
+  encodeChallenge,
+  decodeChallenge,
+  buildChallengeQuestions,
   createInitialSrs,
   applyReview,
   isDue,
@@ -36,3 +42,5 @@ export {
   downloadBundle,
   readBundleFromFile,
 } from './utils/index';
+
+export type { ChallengeData } from './utils/index';
