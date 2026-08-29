@@ -510,7 +510,7 @@ export default function App() {
           </header>
 
           <main className={`flex-1 relative w-full overflow-y-auto overflow-x-hidden ${focusMode ? 'pb-0' : 'pb-20 md:pb-0'}`}>
-            <div className={`max-w-6xl mx-auto min-h-full flex flex-col box-border p-3 sm:p-4 lg:p-6 ${view === 'learned' || view === 'mistakes' || view === 'confusions' ? 'justify-start' : 'justify-center'}`}>
+            <div className={`max-w-6xl mx-auto min-h-full flex flex-col box-border p-3 sm:p-4 lg:p-6 ${view === 'learned' || view === 'mistakes' || view === 'confusions' || view === 'list' ? 'justify-start' : 'justify-center'}`}>
               {view === 'dashboard' && (
                 <Dashboard
                   words={words}

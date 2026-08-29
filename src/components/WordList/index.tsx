@@ -158,7 +158,7 @@ export const WordList: React.FC<WordListProps> = ({
   }, [visibleWords.length, hasMore, isLoading, loadMore]);
 
   return (
-    <div className="bg-white rounded-xl sm:rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-full animate-fade-in w-full max-w-full">
+    <div className="bg-white rounded-xl sm:rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-full min-h-[60vh] sm:min-h-[70vh] animate-fade-in w-full max-w-full self-stretch">
       {/* Header */}
       <div className="p-3 sm:p-4 border-b border-slate-100 bg-white sticky top-0 z-20 space-y-2 sm:space-y-3">
         <div className="flex items-center justify-between">
