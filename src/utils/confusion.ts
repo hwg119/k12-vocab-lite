@@ -126,9 +126,13 @@ export function groupConfusionPairs(
     map.get(w.confusionGroupId)!.push(w);
   }
 
-  // 2. 对没有 confusionGroupId 的词，进行自动形近检测
+  // 2. 对没有 confusionGroupId 的词，进行自动形近检测（结果按 words 引用缓存，命中即跳过 O(n²)）
   const ungrouped = words.filter(w => !w.confusionGroupId);
-  const autoGroups = detectSimilarPairs(ungrouped);
+  let autoGroups = autoPairCache.get(words);
+  if (!autoGroups) {
+    autoGroups = detectSimilarPairs(ungrouped);
+    autoPairCache.set(words, autoGroups);
+  }
 
   // 3. 合并
   const all = [...map.values(), ...autoGroups];
@@ -147,6 +151,18 @@ export function groupConfusionPairs(
   }
   return result.sort((a, b) => a.members[0].english.localeCompare(b.members[0].english));
 }
+
+/**
+ * 静态形近配对的内存缓存。
+ *
+ * 词库来自 WORDS_BY_STAGE（编译期常量，同一学段的 words 数组引用恒定），
+ * 因此 detectSimilarPairs 的结果对该 words 引用是纯静态的——每次打开页面重算
+ * O(n²) 纯属浪费。用 WeakMap 以 words 引用为键缓存，第二次起直接命中。
+ *
+ * 用 WeakMap 而非 localStorage：键挂引用、不占用 storage、数组不再被引用时自动 GC，
+ * 只需在词库数据(引用)变化后自然失效，无需版本号/清理逻辑。
+ */
+const autoPairCache = new WeakMap<Word[], Word[][]>();
 
 /**
  * 自动形近检测：找出长度差 ≤ 1、编辑距离 ≤ 1 的"小型"配对
@@ -187,31 +203,61 @@ function detectSimilarPairs(words: Word[]): Word[][] {
   const lenList = [...buckets.keys()].sort((a, b) => a - b);
 
   // 收集所有形近对（同桶 + 相邻桶），按字典序去重
+  //
+  // 用"删一字符签名索引"取代 O(n²) 两两暴力比对，把候选词对压到几千条：
+  //   - 同长：删掉某位置后得到相同串 → 候选
+  //   - 相邻长度：长词删掉某字符后等于短词 → 候选
+  // 注意签名只是"候选生成器"：两人可删掉不同位置撞同一签名（如 her→he 与 the→he），
+  // 故每条候选边仍需 isEditDistanceAtMost1 复核（候选仅数千条，开销可忽略）。
+  // 复核后结果集合与暴力比对完全一致。总体 O(词数 × 词长)，比扫描几十万次无关词对快一个数量级。
   const pairSet = new Set<string>();
   const pairs: Array<[Word, Word]> = [];
-  const consider = (a: Word, b: Word) => {
-    if (editDistance(a.english, b.english) > 1) return;
+  const addEdge = (a: Word, b: Word) => {
+    if (a.id === b.id) return;
+    if (!isEditDistanceAtMost1(a.english, b.english)) return;
     const key = a.id < b.id ? `${a.id}|${b.id}` : `${b.id}|${a.id}`;
     if (pairSet.has(key)) return;
     pairSet.add(key);
     pairs.push([a, b]);
   };
-  for (let bi = 0; bi < lenList.length; bi++) {
-    const lenA = lenList[bi];
-    const bucketA = buckets.get(lenA)!;
-    if (bucketA.length < 2) continue;
-    // 桶内两两
-    for (let i = 0; i < bucketA.length; i++) {
-      for (let j = i + 1; j < bucketA.length; j++) {
-        consider(bucketA[i], bucketA[j]);
+
+  for (const len of lenList) {
+    const bucket = buckets.get(len)!;
+
+    // 同长：共享删一字符签名 ⇒ 删同一位置后得相同串 ⇒ Hamming ≤ 1（删除位置不同会误报，故仍复核）
+    if (bucket.length >= 2) {
+      const sigMap = new Map<string, Word[]>();
+      for (const w of bucket) {
+        for (let p = 0; p < len; p++) {
+          const key = w.english.slice(0, p) + w.english.slice(p + 1);
+          if (!sigMap.has(key)) sigMap.set(key, []);
+          sigMap.get(key)!.push(w);
+        }
+      }
+      for (const grp of sigMap.values()) {
+        if (grp.length < 2) continue;
+        for (let i = 0; i < grp.length; i++) {
+          for (let j = i + 1; j < grp.length; j++) addEdge(grp[i], grp[j]);
+        }
       }
     }
-    // 与下一个长度桶
-    const nextLen = lenA + 1;
-    if (!buckets.has(nextLen)) continue;
-    const bucketB = buckets.get(nextLen)!;
-    for (const wa of bucketA) {
-      for (const wb of bucketB) consider(wa, wb);
+
+    // 跨相邻长度（短 bucket 长度 len，长 bucket 长度 len+1）：索引长词删一字符，去匹配短词
+    const longer = buckets.get(len + 1);
+    if (longer) {
+      const sigMap = new Map<string, Word[]>();
+      for (const w of longer) {
+        for (let p = 0; p < w.english.length; p++) {
+          const key = w.english.slice(0, p) + w.english.slice(p + 1);
+          if (!sigMap.has(key)) sigMap.set(key, []);
+          sigMap.get(key)!.push(w);
+        }
+      }
+      for (const s of bucket) {
+        const coll = sigMap.get(s.english);
+        if (!coll) continue;
+        for (const t of coll) addEdge(s, t);
+      }
     }
   }
 
@@ -232,7 +278,7 @@ function detectSimilarPairs(words: Word[]): Word[][] {
       if (used.has(w.id)) continue;
       if (groups[groups.length - 1].length >= MAX_GROUP) break;
       // 选取"已加入组成员" 中某个 word 作为锚点，要求锚点与 w 形近
-      const anchor = groups[groups.length - 1].find(x => editDistance(x.english, w.english) <= 1);
+      const anchor = groups[groups.length - 1].find(x => isEditDistanceAtMost1(x.english, w.english));
       if (!anchor) continue;
       groups[groups.length - 1].push(w);
       used.add(w.id);
@@ -242,24 +288,30 @@ function detectSimilarPairs(words: Word[]): Word[][] {
   return groups.filter(g => g.length >= 2);
 }
 
-/** Levenshtein 编辑距离（O(n*m)，仅对小字符串调用） */
-function editDistance(a: string, b: string): number {
-  if (a === b) return 0;
-  const m = a.length, n = b.length;
-  if (Math.abs(m - n) > 1) return 2;
-  let prev = new Array(n + 1).fill(0).map((_, i) => i);
-  let curr = new Array(n + 1).fill(0);
-  for (let i = 1; i <= m; i++) {
-    curr[0] = i;
-    for (let j = 1; j <= n; j++) {
-      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-      curr[j] = Math.min(
-        curr[j - 1] + 1,
-        prev[j] + 1,
-        prev[j - 1] + cost,
-      );
+/** 编辑距离是否 ≤1 的快速判定（O(L)），用于形近检测 */
+function isEditDistanceAtMost1(a: string, b: string): boolean {
+  if (a === b) return true;
+  if (Math.abs(a.length - b.length) > 1) return false;
+  // 保持 s 为较短者
+  const s = a.length <= b.length ? a : b;
+  const l = a.length <= b.length ? b : a;
+  let i = 0;
+  let j = 0;
+  let edits = 0;
+  while (i < s.length && j < l.length) {
+    if (s[i] === l[j]) {
+      i++;
+      j++;
+    } else {
+      if (++edits > 1) return false;
+      if (s.length === l.length) {
+        i++; // 替换
+        j++;
+      } else {
+        j++; // 短串插入一字符（长串跳过）
+      }
     }
-    [prev, curr] = [curr, prev];
   }
-  return prev[n];
+  edits += (s.length - i) + (l.length - j);
+  return edits <= 1;
 }
