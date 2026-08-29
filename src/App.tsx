@@ -653,6 +653,7 @@ export default function App() {
               {view === 'confusions' && (
                 <ConfusionView
                   words={words}
+                  srsMap={srsMap}
                   onGoHome={() => setView('dashboard')}
                   onStartPair={(queue) => {
                     setStudyQueue(queue);

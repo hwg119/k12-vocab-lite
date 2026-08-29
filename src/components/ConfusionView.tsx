@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Word } from '../types';
+import { Word, SrsState } from '../types';
 import { groupConfusionPairs, highlightDiff } from '../utils';
 import type { ConfusionGroup } from '../utils/confusion';
 import { IconArrowLeft, IconSearch, IconX } from './Icons';
@@ -9,7 +9,16 @@ interface ConfusionViewProps {
   onGoHome: () => void;
   /** 进入学习模式（只学该配对里的词） */
   onStartPair: (queue: Word[]) => void;
+  /** 当前学段的 SRS 映射，用于计算"距上次复习天数" */
+  srsMap?: Record<string, SrsState>;
 }
+
+/** 难度区间筛选档位 */
+type DifficultyBucket = 'all' | '1-2' | '2-3' | '3-4' | '4-5';
+/** 差异字符数筛选档位 */
+type DiffBucket = 'all' | '1' | '2' | '3+';
+/** 复习间隔筛选档位 */
+type ReviewBucket = 'all' | 'never' | 'week' | 'month' | 'older';
 
 /**
  * 易混词对比视图
@@ -24,25 +33,76 @@ export const ConfusionView: React.FC<ConfusionViewProps> = ({
   words,
   onGoHome,
   onStartPair,
+  srsMap,
 }) => {
-  const groups = useMemo<ConfusionGroup[]>(() => groupConfusionPairs(words), [words]);
+  const groups = useMemo<ConfusionGroup[]>(
+    () => groupConfusionPairs(words, { srsMap }),
+    [words, srsMap],
+  );
 
-  // 搜索 + 筛选
+  // 搜索 + 多维筛选
   const [keyword, setKeyword] = useState('');
   const [sizeFilter, setSizeFilter] = useState<'all' | '2' | '3+'>('all');
+  const [difficultyFilter, setDifficultyFilter] = useState<DifficultyBucket>('all');
+  const [diffFilter, setDiffFilter] = useState<DiffBucket>('all');
+  const [reviewFilter, setReviewFilter] = useState<ReviewBucket>('all');
+
+  /**
+   * 难度区间匹配：组内 difficultyRange 与档位区间有交集即保留
+   * 例如 [2,4] 与档位 [1-2] 相交 → 保留
+   */
+  const matchDifficulty = (range: [number, number], bucket: DifficultyBucket): boolean => {
+    if (bucket === 'all') return true;
+    const [mapMin, mapMax] = {
+      '1-2': [1, 2],
+      '2-3': [2, 3],
+      '3-4': [3, 4],
+      '4-5': [4, 5],
+    }[bucket];
+    return range[1] >= mapMin && range[0] <= mapMax;
+  };
+
+  /** 差异字符数匹配 */
+  const matchDiff = (n: number, bucket: DiffBucket): boolean => {
+    if (bucket === 'all') return true;
+    if (bucket === '1') return n === 1;
+    if (bucket === '2') return n === 2;
+    return n >= 3;
+  };
+
+  /**
+   * 复习间隔匹配：
+   *   - never:  从未复习（daysSinceReview === Infinity）
+   *   - week:   <= 7 天
+   *   - month:  8 ~ 30 天
+   *   - older:  > 30 天
+   */
+  const matchReview = (days: number, bucket: ReviewBucket): boolean => {
+    if (bucket === 'all') return true;
+    if (bucket === 'never') return !Number.isFinite(days);
+    if (Number.isFinite(days)) {
+      if (bucket === 'week') return days <= 7;
+      if (bucket === 'month') return days > 7 && days <= 30;
+      if (bucket === 'older') return days > 30;
+    }
+    return false;
+  };
 
   const filtered = useMemo<ConfusionGroup[]>(() => {
     const kw = keyword.trim().toLowerCase();
     return groups.filter(g => {
       if (sizeFilter === '2' && g.members.length !== 2) return false;
       if (sizeFilter === '3+' && g.members.length < 3) return false;
+      if (!matchDifficulty(g.difficultyRange, difficultyFilter)) return false;
+      if (!matchDiff(g.diffCount, diffFilter)) return false;
+      if (!matchReview(g.daysSinceReview, reviewFilter)) return false;
       if (!kw) return true;
       return g.members.some(w =>
         w.english.toLowerCase().includes(kw) ||
         w.chinese.includes(kw)
       );
     });
-  }, [groups, keyword, sizeFilter]);
+  }, [groups, keyword, sizeFilter, difficultyFilter, diffFilter, reviewFilter]);
 
   return (
     <div className="w-full max-w-4xl mx-auto animate-fade-in px-2">
@@ -81,27 +141,74 @@ export const ConfusionView: React.FC<ConfusionViewProps> = ({
               </button>
             )}
           </div>
-          {/* 筛选标签 */}
-          <div className="flex items-center gap-2 text-xs">
-            <span className="text-slate-400">筛选：</span>
+          {/* 筛选标签 - 多行 */}
+          <FilterRow label="词组">
             {([
               { key: 'all', label: `全部 (${groups.length})` },
-              { key: '2', label: `仅 2 词组 (${groups.filter(g => g.members.length === 2).length})` },
+              { key: '2', label: `仅 2 词 (${groups.filter(g => g.members.length === 2).length})` },
               { key: '3+', label: `3 词及以上 (${groups.filter(g => g.members.length >= 3).length})` },
             ] as const).map(opt => (
-              <button
+              <Chip
                 key={opt.key}
+                active={sizeFilter === opt.key}
                 onClick={() => setSizeFilter(opt.key)}
-                className={`px-3 py-1 rounded-full border transition-colors ${
-                  sizeFilter === opt.key
-                    ? 'bg-indigo-50 border-indigo-300 text-indigo-700 font-medium'
-                    : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
-                }`}
-              >
-                {opt.label}
-              </button>
+                label={opt.label}
+              />
             ))}
-          </div>
+          </FilterRow>
+
+          {/* 难度区间 */}
+          <FilterRow label="难度">
+            {([
+              { key: 'all', label: '全部' },
+              { key: '1-2', label: '1-2 ★' },
+              { key: '2-3', label: '2-3 ★' },
+              { key: '3-4', label: '3-4 ★' },
+              { key: '4-5', label: '4-5 ★' },
+            ] as const).map(opt => (
+              <Chip
+                key={opt.key}
+                active={difficultyFilter === opt.key}
+                onClick={() => setDifficultyFilter(opt.key)}
+                label={opt.label}
+              />
+            ))}
+          </FilterRow>
+
+          {/* 差异字符数 */}
+          <FilterRow label="差异字符">
+            {([
+              { key: 'all', label: '全部' },
+              { key: '1', label: `1 处 (${groups.filter(g => g.diffCount === 1).length})` },
+              { key: '2', label: `2 处 (${groups.filter(g => g.diffCount === 2).length})` },
+              { key: '3+', label: `3+ 处 (${groups.filter(g => g.diffCount >= 3).length})` },
+            ] as const).map(opt => (
+              <Chip
+                key={opt.key}
+                active={diffFilter === opt.key}
+                onClick={() => setDiffFilter(opt.key)}
+                label={opt.label}
+              />
+            ))}
+          </FilterRow>
+
+          {/* 复习间隔 */}
+          <FilterRow label="上次复习">
+            {([
+              { key: 'all', label: '全部' },
+              { key: 'never', label: `从未 (${groups.filter(g => !Number.isFinite(g.daysSinceReview)).length})` },
+              { key: 'week', label: `本周 (${groups.filter(g => Number.isFinite(g.daysSinceReview) && g.daysSinceReview <= 7).length})` },
+              { key: 'month', label: `一月内 (${groups.filter(g => Number.isFinite(g.daysSinceReview) && g.daysSinceReview > 7 && g.daysSinceReview <= 30).length})` },
+              { key: 'older', label: `超过 30 天 (${groups.filter(g => Number.isFinite(g.daysSinceReview) && g.daysSinceReview > 30).length})` },
+            ] as const).map(opt => (
+              <Chip
+                key={opt.key}
+                active={reviewFilter === opt.key}
+                onClick={() => setReviewFilter(opt.key)}
+                label={opt.label}
+              />
+            ))}
+          </FilterRow>
         </div>
       )}
 
@@ -133,11 +240,47 @@ export const ConfusionView: React.FC<ConfusionViewProps> = ({
       )}
 
       <div className="mt-6 text-xs text-slate-400 text-center">
-        黄色高亮 = 形近词的差异字符 · 点击"进入学习"可专项攻克该组
+        黄色高亮 = 形近词的差异字符 · 可按难度/差异字符/复习间隔筛选 · 点击"进入学习"可专项攻克该组
       </div>
     </div>
   );
 };
+
+/**
+ * 筛选行：左侧标签 + 右侧可换行的标签按钮组
+ */
+const FilterRow: React.FC<{
+  label: string;
+  children: React.ReactNode;
+}> = ({ label, children }) => (
+  <div className="flex items-start gap-2 flex-wrap">
+    <span className="text-xs font-medium text-slate-500 mt-1.5 shrink-0 w-14">{label}</span>
+    <div className="flex items-center gap-1.5 flex-wrap flex-1">
+      {children}
+    </div>
+  </div>
+);
+
+/**
+ * 筛选标签按钮
+ */
+const Chip: React.FC<{
+  active: boolean;
+  onClick: () => void;
+  label: string;
+}> = ({ active, onClick, label }) => (
+  <button
+    onClick={onClick}
+    className={[
+      'text-xs px-2.5 py-1 rounded-full border transition-colors',
+      active
+        ? 'bg-indigo-600 text-white border-indigo-600'
+        : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300 hover:text-indigo-600',
+    ].join(' ')}
+  >
+    {label}
+  </button>
+);
 
 /**
  * 单个对照卡：成员并排展示，差异字符黄色高亮
@@ -155,9 +298,40 @@ const CompareCard: React.FC<{
     <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
       {/* 头部：组号 + 学习入口 */}
       <div className="flex items-center justify-between mb-3">
-        <span className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-full border border-amber-100">
-          配对 · {group.members.length} 词
-        </span>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-full border border-amber-100">
+            配对 · {group.members.length} 词
+          </span>
+          {group.diffCount > 0 && (
+            <span className="text-xs text-rose-600 bg-rose-50 px-2 py-1 rounded-full border border-rose-100">
+              差异 {group.diffCount} 处
+            </span>
+          )}
+          <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-full border border-slate-200">
+            难度 {group.difficultyRange[0]}{group.difficultyRange[0] !== group.difficultyRange[1] ? `-${group.difficultyRange[1]}` : ''} ★
+          </span>
+          {!Number.isFinite(group.daysSinceReview) ? (
+            <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-full border border-slate-200">
+              未复习
+            </span>
+          ) : (
+            <span
+              className={[
+                'text-xs px-2 py-1 rounded-full border',
+                group.daysSinceReview > 30
+                  ? 'text-rose-600 bg-rose-50 border-rose-100'
+                  : group.daysSinceReview > 7
+                  ? 'text-amber-600 bg-amber-50 border-amber-100'
+                  : 'text-emerald-600 bg-emerald-50 border-emerald-100',
+              ].join(' ')}
+              title={`距上次复习 ${Math.round(group.daysSinceReview)} 天`}
+            >
+              {group.daysSinceReview < 1
+                ? '今天复习过'
+                : `${Math.round(group.daysSinceReview)} 天前复习`}
+            </span>
+          )}
+        </div>
         <button
           onClick={onStart}
           className="text-xs font-medium text-indigo-600 hover:text-white hover:bg-indigo-600 px-2 py-1 rounded-md transition-colors border border-indigo-200"

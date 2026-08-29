@@ -1,15 +1,85 @@
-import { Word } from '../types';
+import { Word, SrsState } from '../types';
+import { highlightDiff } from './diff';
 
 export interface ConfusionGroup {
   /** 形近/义近的配对（一般是 2~3 个） */
   members: Word[];
+  /** 字符级差异位置数（形近词差异字符数；义近组按 0 处理） */
+  diffCount: number;
+  /** 组内成员难度区间：[min, max] */
+  difficultyRange: [number, number];
+  /** 组内成员中"最近一次复习"距今的天数（未学视为 Infinity） */
+  daysSinceReview: number;
+}
+
+/** 计算一组词的形近差异字符数（取每词 diff=true 的位置数，再跨词取 max） */
+function computeDiffCount(members: Word[]): number {
+  if (members.length < 2) return 0;
+  const diffs = highlightDiff(members.map(w => w.english));
+  let max = 0;
+  for (const arr of diffs) {
+    let n = 0;
+    for (const c of arr) if (c.diff) n++;
+    if (n > max) max = n;
+  }
+  return max;
+}
+
+/** 计算组内难度区间（按 difficulty 字段，缺省视为 3） */
+function computeDifficultyRange(members: Word[]): [number, number] {
+  if (members.length === 0) return [1, 5];
+  let lo = Infinity, hi = -Infinity;
+  for (const m of members) {
+    const d = typeof m.difficulty === 'number' ? m.difficulty : 3;
+    if (d < lo) lo = d;
+    if (d > hi) hi = d;
+  }
+  return [lo === Infinity ? 1 : lo, hi === -Infinity ? 5 : hi];
+}
+
+/**
+ * 计算"距上次复习天数"：
+ *   - 组内任一成员没有 SRS 记录 → 视为从未复习 → Infinity
+ *   - 否则取组内"最近一次复习时间戳"中最大的那个，用 (now - max) / day
+ */
+function computeDaysSinceReview(
+  members: Word[],
+  srsMap: Record<string, SrsState> | undefined,
+  now: number,
+): number {
+  if (!srsMap || Object.keys(srsMap).length === 0) return Infinity;
+  let latest = -Infinity;
+  let anyFound = false;
+  for (const m of members) {
+    const s = srsMap[m.id];
+    if (!s || !s.lastReviewedAt) continue;
+    anyFound = true;
+    if (s.lastReviewedAt > latest) latest = s.lastReviewedAt;
+  }
+  if (!anyFound) return Infinity;
+  const DAY = 24 * 60 * 60 * 1000;
+  return Math.max(0, (now - latest) / DAY);
+}
+
+export interface GroupConfusionOptions {
+  /** SRS 状态映射（可选），用于计算"距上次复习天数" */
+  srsMap?: Record<string, SrsState>;
+  /** 当前时间戳（默认 Date.now），便于测试 */
+  now?: number;
 }
 
 /**
  * 把同 confusionGroupId 的词归类到一起
  * 单独成组的（成员数 >= 2）才返回，否则视为无配对
+ *
+ * 可传入 SRS 上下文，扩展每组的元信息（diffCount / difficultyRange / daysSinceReview）。
  */
-export function groupConfusionPairs(words: Word[]): ConfusionGroup[] {
+export function groupConfusionPairs(
+  words: Word[],
+  options: GroupConfusionOptions = {},
+): ConfusionGroup[] {
+  const { srsMap, now = Date.now() } = options;
+
   // 1. 先按显式 confusionGroupId 归类
   const map = new Map<string, Word[]>();
   for (const w of words) {
@@ -28,7 +98,12 @@ export function groupConfusionPairs(words: Word[]): ConfusionGroup[] {
   for (const members of all) {
     if (members.length >= 2) {
       members.sort((a, b) => a.english.localeCompare(b.english));
-      result.push({ members });
+      result.push({
+        members,
+        diffCount: computeDiffCount(members),
+        difficultyRange: computeDifficultyRange(members),
+        daysSinceReview: computeDaysSinceReview(members, srsMap, now),
+      });
     }
   }
   return result.sort((a, b) => a.members[0].english.localeCompare(b.members[0].english));

@@ -17,7 +17,7 @@ export const APP_VERSION: string =
   (typeof import.meta !== 'undefined' && (import.meta as any).env?.PACKAGE_VERSION) || '0.0.0';
 
 /** Android 端期望的版本号（必须与 build.gradle 一致） */
-export const LATEST_VERSION: string = '1.1.0';
+export const LATEST_VERSION: string = '1.2.0';
 
 /** 当前是否为最新版本 */
 export function isUpToDate(): boolean {
