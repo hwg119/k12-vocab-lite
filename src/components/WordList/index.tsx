@@ -47,8 +47,9 @@ export const WordList: React.FC<WordListProps> = ({
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
   /** 本地"强制重算"版本号：仅在用户切换 chip / 搜索 / 进入视图时自增 */
   const [localVersion, setLocalVersion] = useState(dataVersion);
-  const setMarkFilter = (v: MarkFilter) => { setMarkFilterRaw(v); setLocalVersion(x => x + 1); };
-  const setSearchTerm = (v: string) => { setSearchTermRaw(v); setLocalVersion(x => x + 1); };
+  /** chip / 搜索变更时：重置本地覆盖集（与最新 learnedIds 对齐）+ 触发列表重算 */
+  const setMarkFilter = (v: MarkFilter) => { setMarkFilterRaw(v); setOverrideLearned(new Set(learnedIds)); setLocalVersion(x => x + 1); };
+  const setSearchTerm = (v: string) => { setSearchTermRaw(v); setOverrideLearned(new Set(learnedIds)); setLocalVersion(x => x + 1); };
   /**
    * 本地"覆盖集"：用户在本视图内手动标记/取消的 wordKey。
    * 渲染时优先用本集合判定"是否已掌握"——保证点击立即看到图标变化，

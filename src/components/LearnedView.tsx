@@ -114,10 +114,10 @@ export const LearnedView: React.FC<LearnedViewProps> = ({
   const [searchTerm, setSearchTermRaw] = useState('');
   /** 本地"强制重算"版本号：仅在用户切换 chip / 搜索 / 进入视图时自增 */
   const [localVersion, setLocalVersion] = useState(dataVersion);
-  /** chip / 搜索变更时同步刷新列表（标记/取消标记不走这里） */
-  const setTimeFilter = (v: TimeFilter) => { setTimeFilterRaw(v); setLocalVersion(x => x + 1); };
-  const setStatusFilter = (v: StatusFilter) => { setStatusFilterRaw(v); setLocalVersion(x => x + 1); };
-  const setSearchTerm = (v: string) => { setSearchTermRaw(v); setLocalVersion(x => x + 1); };
+  /** chip / 搜索变更时同步刷新列表 + 重置本地覆盖集（与最新 learnedIds 对齐） */
+  const setTimeFilter = (v: TimeFilter) => { setTimeFilterRaw(v); setOverrideLearned(new Set(learnedIds)); setLocalVersion(x => x + 1); };
+  const setStatusFilter = (v: StatusFilter) => { setStatusFilterRaw(v); setOverrideLearned(new Set(learnedIds)); setLocalVersion(x => x + 1); };
+  const setSearchTerm = (v: string) => { setSearchTermRaw(v); setOverrideLearned(new Set(learnedIds)); setLocalVersion(x => x + 1); };
   /**
    * 本地"覆盖集"：记录用户在本视图内手动取消/标记的 wordKey。
    * 渲染时优先用本集合判定"是否已掌握"——保证点击立即看到图标变化，
@@ -316,7 +316,16 @@ export const LearnedView: React.FC<LearnedViewProps> = ({
               key={it.word.id}
               item={it}
               isLearnedNow={overrideLearned.has(wordKey(it.word))}
-              onUnmark={onUnmarkLearned}
+              onUnmark={(w) => {
+                onUnmarkLearned(w);
+                const k = wordKey(w);
+                setOverrideLearned(prev => {
+                  const next = new Set(prev);
+                  next.delete(k);
+                  if (w.id && w.id !== k) next.delete(w.id);
+                  return next;
+                });
+              }}
             />
           ))}
         </div>
@@ -441,7 +450,7 @@ const LearnedRow = memo(
   }: {
     item: LearnedItem;
     isLearnedNow: boolean;
-    onUnmark: (w: Word | string) => void;
+    onUnmark: (w: Word) => void;
   }) => {
     const { word, firstMasteredAt, lastReviewedAt, status } = item;
     return (
