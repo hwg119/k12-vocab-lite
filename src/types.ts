@@ -144,6 +144,12 @@ export interface BackupBundle {
     };
   };
   currentStage: Stage;
+  /**
+   * 全量 LocalStorage 快照（仅 `vocab-` 前缀 keys）。
+   * 覆盖今日已复习、成就、闯关单元等未单列字段；导入时整表替换对应 keys，
+   * 确保未来新增的本地键也能随备份迁移，避免重装/换机丢失。
+   */
+  all?: Record<string, string>;
 }
 
 /**

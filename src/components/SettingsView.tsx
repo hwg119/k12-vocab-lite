@@ -32,6 +32,23 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   const handleExport = () => {
     const bundle = exportBundle();
+    if (PLATFORM === 'android') {
+      // Android：用 data: URL 触发，由原生接收写入公共 Download 目录（卸载后仍保留，可换机/重装导入）
+      const json = JSON.stringify(bundle, null, 2);
+      const utf8 = unescape(encodeURIComponent(json));
+      const b64 = btoa(utf8);
+      const ts = new Date(bundle.exportedAt).toISOString().slice(0, 19).replace(/[:T]/g, '-');
+      const a = document.createElement('a');
+      a.href = `data:application/json;base64,${b64}`;
+      a.download = `k12-vocab-backup-${ts}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => {
+        setStatus(`已导出全部学段数据，请到手机 文件管理器 › Download 目录查看（K12 可离线备份，卸载/换机后导入即可恢复）`);
+      }, 800);
+      return;
+    }
     downloadBundle(bundle);
     setStatus(`已导出 ${Object.keys(bundle.stages).length} 个学段的数据`);
   };

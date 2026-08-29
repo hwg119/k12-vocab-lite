@@ -1,4 +1,4 @@
-import { BackupBundle, Stage, SrsState } from '../types';
+import { BackupBundle, Stage, SrsState, Achievement, StudyUnit } from '../types';
 import { StorageKeys } from '../types';
 import { STAGE_ORDER } from '../data';
 
@@ -19,18 +19,33 @@ interface RawStageBucket {
   learnedIds: string[];
   mistakeIds: string[];
   srs: Record<string, SrsState>;
+  achievements: unknown[];
+  units: unknown[];
 }
 
 function readBucket(stage: Stage): RawStageBucket {
   const li = window.localStorage.getItem(StorageKeys.learnedIds(stage));
   const mi = window.localStorage.getItem(StorageKeys.mistakes(stage));
   const sm = window.localStorage.getItem(StorageKeys.srs(stage));
+  const ac = window.localStorage.getItem(StorageKeys.achievements(stage));
+  const un = window.localStorage.getItem(StorageKeys.units(stage));
 
   return {
     learnedIds: li ? safeJsonArray(li) : [],
     mistakeIds: mi ? safeJsonArray(mi) : [],
     srs: sm ? safeJsonObject(sm) : {},
+    achievements: ac ? safeJsonArrayAny(ac) : [],
+    units: un ? safeJsonArrayAny(un) : [],
   };
+}
+
+function safeJsonArrayAny(raw: string): unknown[] {
+  try {
+    const v = JSON.parse(raw);
+    return Array.isArray(v) ? v : [];
+  } catch {
+    return [];
+  }
 }
 
 function safeJsonArray(raw: string): string[] {
@@ -58,7 +73,9 @@ export function exportBundle(): BackupBundle {
     if (
       bucket.learnedIds.length === 0 &&
       bucket.mistakeIds.length === 0 &&
-      Object.keys(bucket.srs).length === 0
+      Object.keys(bucket.srs).length === 0 &&
+      bucket.achievements.length === 0 &&
+      bucket.units.length === 0
     ) {
       continue;
     }
@@ -66,19 +83,30 @@ export function exportBundle(): BackupBundle {
       learnedIds: bucket.learnedIds,
       mistakeIds: bucket.mistakeIds,
       srs: bucket.srs,
-      achievements: [],
-      units: [],
+      achievements: bucket.achievements as Achievement[],
+      units: bucket.units as StudyUnit[],
     };
   }
 
   const cur = window.localStorage.getItem(StorageKeys.currentStage);
   const currentStage = (cur as Stage) || 'senior';
 
+  // 全量快照：收集所有 vocab-* keys，天然覆盖今日已复习/成就/闯关/偏好等全部数据
+  const all: Record<string, string> = {};
+  for (let i = 0; i < window.localStorage.length; i++) {
+    const k = window.localStorage.key(i);
+    if (k && k.startsWith('vocab')) {
+      const v = window.localStorage.getItem(k);
+      if (v != null) all[k] = v;
+    }
+  }
+
   return {
     version: VERSION,
     exportedAt: Date.now(),
     currentStage,
     stages,
+    all,
   };
 }
 
@@ -91,23 +119,39 @@ export function importBundle(bundle: BackupBundle): { stagesImported: number } {
   }
 
   let count = 0;
-  for (const s of STAGE_ORDER) {
-    const bucket = bundle.stages[s];
-    if (!bucket) continue;
 
-    const li = StorageKeys.learnedIds(s);
-    const mi = StorageKeys.mistakes(s);
-    const sk = StorageKeys.srs(s);
+  // 新版全量快照：整表替换 vocab-* keys（覆盖今日已复习/成就/闯关等）
+  if (bundle.all && Object.keys(bundle.all).length > 0) {
+    const allKeys = new Set(Object.keys(bundle.all));
+    for (let i = window.localStorage.length - 1; i >= 0; i--) {
+      const k = window.localStorage.key(i);
+      if (k && k.startsWith('vocab') && !allKeys.has(k)) {
+        window.localStorage.removeItem(k);
+      }
+    }
+    for (const [k, v] of Object.entries(bundle.all)) {
+      window.localStorage.setItem(k, v);
+    }
+    count = STAGE_ORDER.filter(s => bundle.stages && bundle.stages[s]).length || Object.keys(bundle.all).length;
+  } else {
+    for (const s of STAGE_ORDER) {
+      const bucket = bundle.stages[s];
+      if (!bucket) continue;
 
-    window.localStorage.setItem(li, JSON.stringify(bucket.learnedIds ?? []));
-    window.localStorage.setItem(mi, JSON.stringify(bucket.mistakeIds ?? []));
-    window.localStorage.setItem(sk, JSON.stringify(bucket.srs ?? {}));
+      const li = StorageKeys.learnedIds(s);
+      const mi = StorageKeys.mistakes(s);
+      const sk = StorageKeys.srs(s);
 
-    count += 1;
-  }
+      window.localStorage.setItem(li, JSON.stringify(bucket.learnedIds ?? []));
+      window.localStorage.setItem(mi, JSON.stringify(bucket.mistakeIds ?? []));
+      window.localStorage.setItem(sk, JSON.stringify(bucket.srs ?? {}));
 
-  if (bundle.currentStage) {
-    window.localStorage.setItem(StorageKeys.currentStage, bundle.currentStage);
+      count += 1;
+    }
+
+    if (bundle.currentStage) {
+      window.localStorage.setItem(StorageKeys.currentStage, bundle.currentStage);
+    }
   }
 
   return { stagesImported: count };
