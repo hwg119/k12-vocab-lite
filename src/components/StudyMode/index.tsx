@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Word, ReviewFeedback } from '../../types';
 import { IconArrowLeft, IconArrowRight, IconCheck, IconClock, IconBookOpen, IconQuestion } from '../Icons';
 
@@ -6,6 +6,8 @@ interface StudyModeProps {
   studyQueue: Word[];
   learnedIds: Set<string>;
   source?: 'default' | 'review' | 'mistakes' | 'unit' | 'confusion' | 'newWord';
+  /** 易错词"毕业"庆祝提示（专项复习连续答对达标时由 App 传入） */
+  graduatedNotice?: { english: string; key: number } | null;
   /** 用户提交一档反馈（know / vague / unknown）
    *  - know   → mastered
    *  - vague  → mistake+
@@ -29,12 +31,24 @@ export const StudyMode: React.FC<StudyModeProps> = ({
   studyQueue,
   learnedIds,
   source,
+  graduatedNotice,
   onSubmit,
   onGoHome,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const isProcessingRef = useRef(false);
+  // 易错词"毕业"庆祝 toast
+  const [graduateToast, setGraduateToast] = useState<{ english: string } | null>(null);
+  const lastNoticeKeyRef = useRef<number>(0);
+  useEffect(() => {
+    if (source !== 'mistakes' || !graduatedNotice) return;
+    if (graduatedNotice.key === lastNoticeKeyRef.current) return;
+    lastNoticeKeyRef.current = graduatedNotice.key;
+    setGraduateToast({ english: graduatedNotice.english });
+    const t = setTimeout(() => setGraduateToast(null), 2800);
+    return () => clearTimeout(t);
+  }, [graduatedNotice, source]);
 
   const currentWord = studyQueue[currentIndex];
   const progress = studyQueue.length > 0 ? ((currentIndex + 1) / studyQueue.length) * 100 : 0;
@@ -93,6 +107,17 @@ export const StudyMode: React.FC<StudyModeProps> = ({
 
   return (
     <div className="h-full flex flex-col items-center justify-center max-w-2xl mx-auto w-full animate-slide-up px-6">
+      {/* 易错词毕业庆祝 toast */}
+      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50">
+        {graduateToast && (
+          <div className="flex items-center gap-2 px-5 py-3 bg-emerald-600 text-white rounded-2xl shadow-xl shadow-emerald-300/40 animate-fade-in">
+            <span className="text-xl">🎉</span>
+            <span className="font-semibold">
+              已攻克 <span className="font-bold">{graduateToast.english}</span>！连续答对达标，移出易错本
+            </span>
+          </div>
+        )}
+      </div>
       {/* 进度条 */}
       <div className="w-full max-w-md mb-6">
         <div className="flex justify-between items-center mb-2">

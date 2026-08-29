@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Word, SrsState } from '../../types';
 import { ALL_WORDS } from '../../data';
-import { matchWordKey } from '../../utils';
+import { matchWordKey, graduationThreshold } from '../../utils';
 import { IconArrowLeft, IconTrash } from '../Icons';
 
 interface MistakesViewProps {
@@ -62,13 +62,28 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
       if (!w) return null;
       // srsMap 同时支持 key 和旧 id
       const srs = srsMap[id] ?? srsMap[w.id] ?? srsMap[`w:${w.english}|${w.chinese}`];
-      return { word: w, wrong: srs?.wrongCount ?? 0, idx };
+      return {
+        word: w,
+        wrong: srs?.wrongCount ?? 0,
+        repetitions: srs?.repetitions ?? 0,
+        dueAt: srs?.dueAt ?? 0,
+        idx,
+      };
     })
-    .filter((x): x is { word: Word; wrong: number; idx: number } => x !== null)
+    .filter(
+      (x): x is { word: Word; wrong: number; repetitions: number; dueAt: number; idx: number } =>
+        x !== null,
+    )
     // 主排序：错次多 → 少；同错次：先加入 mistakeIds 的在前
     .sort((a, b) => (b.wrong - a.wrong) || (a.idx - b.idx));
 
   const total = sortedWords.length;
+  const now = Date.now();
+  // 今日到期错词：dueAt=0（新错词）或已到复习期 → 间隔巩固的核心队列
+  const dueQueue = sortedWords
+    .filter(s => s.dueAt === 0 || s.dueAt <= now)
+    .map(s => s.word);
+  const dueCount = dueQueue.length;
   const reviewableQueue = sortedWords.map(s => s.word);
 
   return (
@@ -134,17 +149,25 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
       ) : (
         <>
           {/* 统计卡片 + 专项复习按钮 */}
-          <div className="bg-gradient-to-br from-rose-500 to-rose-600 rounded-2xl p-6 text-white shadow-lg mb-4">
-            <p className="text-rose-100 text-xs uppercase tracking-wider">Mistakes Collection</p>
+          <div className="bg-gradient-to-br from-rose-100 to-rose-50 rounded-2xl p-6 text-rose-900 shadow-sm border border-rose-100 mb-4">
+            <p className="text-rose-500 text-xs uppercase tracking-wider">Mistakes Collection</p>
             <div className="flex items-baseline gap-2 mt-1">
               <h3 className="text-4xl font-bold">{total}</h3>
-              <span className="text-rose-200 text-sm">words to tackle</span>
+              <span className="text-rose-400 text-sm">words to tackle</span>
             </div>
+            {dueCount > 0 ? (
+              <button
+                onClick={() => onStartReview(dueQueue)}
+                className="mt-4 w-full py-2.5 bg-white text-rose-600 font-semibold rounded-lg border border-rose-200 hover:bg-rose-50 transition-colors"
+              >
+                开始复习今日到期的 {dueCount} 个易错词
+              </button>
+            ) : null}
             <button
               onClick={() => onStartReview(reviewableQueue)}
-              className="mt-4 w-full py-2.5 bg-white text-rose-600 font-semibold rounded-lg hover:bg-rose-50 transition-colors"
+              className="mt-2 w-full py-2 text-rose-500 hover:text-rose-700 text-sm underline underline-offset-4 transition-colors"
             >
-              开始专项复习
+              复习全部 {total} 个错词
             </button>
           </div>
 
@@ -183,25 +206,41 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
 
           {/* 列表 */}
           <ul className="space-y-2">
-            {sortedWords.map(({ word, wrong }) => (
-              <li
-                key={word.id}
-                className="bg-white rounded-xl border border-slate-100 p-4 flex items-center justify-between hover:shadow-sm transition-shadow"
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline gap-2">
-                    <span className="font-bold text-slate-800">{word.english}</span>
-                    <span className="text-xs text-indigo-500 font-mono">{word.phonetic}</span>
+            {sortedWords.map(({ word, wrong, repetitions }) => {
+              const threshold = graduationThreshold(wrong);
+              const progress = Math.min(repetitions, threshold);
+              return (
+                <li
+                  key={word.id}
+                  className="bg-white rounded-xl border border-slate-100 p-4 flex items-center justify-between hover:shadow-sm transition-shadow"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline gap-2">
+                      <span className="font-bold text-slate-800">{word.english}</span>
+                      <span className="text-xs text-indigo-500 font-mono">{word.phonetic}</span>
+                    </div>
+                    <p className="text-sm text-slate-500 mt-1 break-words leading-relaxed">{word.chinese}</p>
                   </div>
-                  <p className="text-sm text-slate-500 mt-1 break-words leading-relaxed">{word.chinese}</p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0 ml-3">
-                  <span className="inline-flex items-center justify-center min-w-[28px] h-7 px-2 text-xs font-mono text-rose-600 bg-rose-50 rounded-full border border-rose-100">
-                    ×{wrong}
-                  </span>
-                </div>
-              </li>
-            ))}
+                  <div className="flex flex-col items-end gap-1.5 shrink-0 ml-3">
+                    <span className="inline-flex items-center justify-center min-w-[28px] h-7 px-2 text-xs font-mono text-rose-600 bg-rose-50 rounded-full border border-rose-100">
+                      ×{wrong}
+                    </span>
+                    {threshold > 1 ? (
+                      <span
+                        className={
+                          'inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium rounded-full whitespace-nowrap ' +
+                          (progress >= threshold
+                            ? 'text-emerald-600 bg-emerald-50 border border-emerald-200'
+                            : 'text-amber-600 bg-amber-50 border border-amber-200')
+                        }
+                      >
+                        ⚑ 巩固 {progress}/{threshold}
+                      </span>
+                    ) : null}
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         </>
       )}

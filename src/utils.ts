@@ -28,6 +28,8 @@ export {
   isDue,
   selectDueWords,
   pickMistakes,
+  graduationThreshold,
+  shouldGraduateFromMistakes,
   FEEDBACK_QUALITY,
   planUnitsForStage,
   unitProgress,

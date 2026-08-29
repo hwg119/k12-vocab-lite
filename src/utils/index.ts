@@ -17,6 +17,8 @@ export {
   isDue,
   selectDueWords,
   pickMistakes,
+  graduationThreshold,
+  shouldGraduateFromMistakes,
   FEEDBACK_QUALITY,
 } from './sm2';
 export { planUnitsForStage, unitProgress } from './units';

@@ -206,6 +206,8 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [studyQueue, setStudyQueue] = useState<Word[]>([]);
   const [studySource, setStudySource] = useState<'default' | 'review' | 'mistakes' | 'unit' | 'confusion' | 'newWord'>('default');
+  // 易错词"毕业"庆祝提示（专项复习连续答对达标时弹 toast）
+  const [graduatedNotice, setGraduatedNotice] = useState<{ english: string; key: number } | null>(null);
   const [quizQuestions, setQuizQuestions] = useState<ReturnType<typeof generateQuiz>>([]);
   const [quizMode, setQuizMode] = useState<'daily' | 'sprint' | 'challenge'>('daily');
   // 测验重启计数器——作为 QuizMode 的 key，强制重新挂载
@@ -548,9 +550,14 @@ export default function App() {
                   studyQueue={studyQueue}
                   learnedIds={learnedIds}
                   source={studySource}
+                  graduatedNotice={graduatedNotice}
                   onSubmit={(id, fb) => {
                     const w = words.find(x => x.id === id);
-                    submitFeedback(w ?? id, fb);
+                    const graduated = submitFeedback(w ?? id, fb);
+                    // 专项复习中连续答对达标 → 弹"已攻克"庆祝 toast
+                    if (graduated && studySource === 'mistakes') {
+                      setGraduatedNotice({ english: w?.english ?? id, key: Date.now() });
+                    }
                   }}
                   onGoHome={() => {
                     // 同步清队列，避免 setView 后还残留旧 studyQueue 引发的空白

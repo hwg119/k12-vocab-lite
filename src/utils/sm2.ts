@@ -121,6 +121,27 @@ export function selectDueWords(
   return mixed.slice(0, limit);
 }
 
+/**
+ * 错词出本所需连续答对数（按累计错误次数分档）。
+ * - 轻度(≤2)：1 次 → 即时出本，保留即时成就感
+ * - 中度(3-5)：2 次 → 二次间隔巩固
+ * - 重度(≥6)：3 次 → 三次间隔巩固，充分强化记忆
+ */
+export function graduationThreshold(wrongCount: number): number {
+  if (wrongCount <= 2) return 1;
+  if (wrongCount <= 5) return 2;
+  return 3;
+}
+
+/**
+ * 判断错词是否可出本：连续答对数已达该错次对应的阈值。
+ * repetitions 即 SM2 中的连续答对数——每次 know 递增、vague/unknown 重置为 0，
+ * 因此天然反映"间隔复习中连续答对"的次数。
+ */
+export function shouldGraduateFromMistakes(state: SrsState): boolean {
+  return state.repetitions >= graduationThreshold(state.wrongCount);
+}
+
 /** 易错排行：按 wrongCount 降序，取前 N 个 id */
 export function pickMistakes(
   words: { id: string }[],

@@ -14,6 +14,7 @@ import { WORDS_BY_STAGE, ALL_WORDS } from '../data';
 import {
   createInitialSrs,
   applyReview,
+  shouldGraduateFromMistakes,
   planUnitsForStage,
   evaluateAchievements,
   computeStreak,
@@ -65,7 +66,8 @@ export interface UseStageReturn {
 
   markLearned: (wordOrId: Word | string) => void;
   unmarkLearned: (wordOrId: Word | string) => void;
-  submitFeedback: (wordOrId: Word | string, feedback: ReviewFeedback) => void;
+  /** 提交反馈；返回该词本次是否因连续答对达标而"毕业出本"（供 UI 庆祝/提示） */
+  submitFeedback: (wordOrId: Word | string, feedback: ReviewFeedback) => boolean;
   recordQuizAnswer: (isCorrect: boolean, word?: Word) => void;
   /** 仅清空易错本（保留已掌握、SRS、打卡） */
   clearMistakes: () => void;
@@ -382,21 +384,21 @@ export function useStage(): UseStageReturn {
         }
       }
       // 1. 更新 SRS 状态（同时写 key + 旧 id 双映射）
-      setSrsMap(prev => {
-        const cur = prev[key] ?? prev[legacyId] ?? createInitialSrs();
-        const next = applyReview(cur, feedback);
-        // 首次掌握（!wasLearnedBefore）→ 写入首次掌握时间戳
-        //   后续复习（wasLearnedBefore 为 true）→ 保留旧的 firstMasteredAt
-        if (!wasLearnedBefore && next.firstMasteredAt === undefined) {
-          return {
-            ...prev,
-            [key]: { ...next, firstMasteredAt: Date.now() },
-            [legacyId]: { ...next, firstMasteredAt: Date.now() },
-          };
-        }
-        return { ...prev, [key]: next, [legacyId]: next };
-      });
+      //    先在闭包 srsMap 上算出 next，便于同步判断"是否毕业出本"
+      const cur = srsMap[key] ?? srsMap[legacyId] ?? createInitialSrs();
+      const rawNext = applyReview(cur, feedback);
+      let next = rawNext;
+      // 首次掌握（!wasLearnedBefore）→ 写入首次掌握时间戳；后续复习保留旧值
+      if (!wasLearnedBefore && next.firstMasteredAt === undefined) {
+        next = { ...next, firstMasteredAt: Date.now() };
+      }
+      setSrsMap(prev => ({
+        ...prev,
+        [key]: next,
+        [legacyId]: next,
+      }));
       // 2. 联动易错本与掌握集合
+      let graduated = false;
       if (feedback === 'know') {
         setLearnedIds(prev => {
           if (prev.has(key) || prev.has(legacyId)) return prev;
@@ -413,7 +415,11 @@ export function useStage(): UseStageReturn {
             return { date: today, count: base + 1 };
           });
         }
-        setMistakeIds(prev => prev.filter(x => x !== key && x !== legacyId));
+        // 连续答对达标才毕业出本；未达标仍留在易错本，等待下一次间隔复习
+        graduated = shouldGraduateFromMistakes(next);
+        if (graduated) {
+          setMistakeIds(prev => prev.filter(x => x !== key && x !== legacyId));
+        }
       } else {
         setMistakeIds(prev => {
           if (prev.includes(key) || prev.includes(legacyId)) return prev;
@@ -433,8 +439,9 @@ export function useStage(): UseStageReturn {
         }
         return { date: today, ids: [...prev.ids, key] };
       });
+      return graduated;
     },
-    [setLearnedIds, setSrsMap, setMistakeIds, setStudyDays, setTodayNewSnapshot, setTodayReviewedSnapshot, learnedIds, words, todayKey],
+    [setLearnedIds, setSrsMap, setMistakeIds, setStudyDays, setTodayNewSnapshot, setTodayReviewedSnapshot, learnedIds, words, todayKey, srsMap],
   );
 
   const recordQuizAnswer = useCallback(
