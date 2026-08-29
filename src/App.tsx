@@ -643,6 +643,7 @@ export default function App() {
                 <ConfusionView
                   words={words}
                   srsMap={srsMap}
+                  learnedIds={learnedIds}
                   onGoHome={() => setView('dashboard')}
                   onStartPair={(queue) => {
                     setStudyQueue(queue);

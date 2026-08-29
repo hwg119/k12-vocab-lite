@@ -6,8 +6,8 @@ export interface ConfusionGroup {
   members: Word[];
   /** 字符级差异位置数（形近词差异字符数；义近组按 0 处理） */
   diffCount: number;
-  /** 组内成员难度区间：[min, max] */
-  difficultyRange: [number, number];
+  /** 混淆风险评分（1-5），综合差异字符数、词长、公共后缀、已学比例计算 */
+  confusionRisk: number;
   /** 组内成员中"最近一次复习"距今的天数（未学视为 Infinity） */
   daysSinceReview: number;
 }
@@ -25,16 +25,52 @@ function computeDiffCount(members: Word[]): number {
   return max;
 }
 
-/** 计算组内难度区间（按 difficulty 字段，缺省视为 3） */
-function computeDifficultyRange(members: Word[]): [number, number] {
-  if (members.length === 0) return [1, 5];
-  let lo = Infinity, hi = -Infinity;
-  for (const m of members) {
-    const d = typeof m.difficulty === 'number' ? m.difficulty : 3;
-    if (d < lo) lo = d;
-    if (d > hi) hi = d;
+/**
+ * 计算混淆风险评分（1-5），综合以下因子：
+ *   1. diffCount：差异字符数（1→高风险，≥3→低风险）
+ *   2. 词长：词越长越容易看错
+ *   3. 公共后缀占比：共享后缀越长越容易混淆（如 -tion/-sion）
+ *   4. 已学比例：已学的词才真正存在混淆风险
+ *
+ * 返回值 1-5 整数（四舍五入），5 = 最容易混淆。
+ */
+function computeConfusionRisk(
+  members: Word[],
+  diffCount: number,
+  learnedIds?: Set<string>,
+): number {
+  if (members.length === 0) return 1;
+  const maxLen = Math.max(...members.map(m => m.english.length));
+
+  // 因子 1：差异字符数（核心）—— 1 处差异极易混淆，3+ 处则好区分
+  const diffScore = diffCount <= 1 ? 4 : diffCount === 2 ? 2.5 : 1;
+
+  // 因子 2：词长 —— 越长越容易看错
+  const lenScore = maxLen <= 4 ? 0.5 : maxLen <= 7 ? 1 : maxLen <= 10 ? 1.5 : 2;
+
+  // 因子 3：公共后缀占比 —— 共享部分越长越容易混淆
+  const lowerWords = members.map(m => m.english.toLowerCase());
+  let commonEndLen = 0;
+  for (let len = 1; len <= maxLen; len++) {
+    const suffix = lowerWords[0].slice(-len);
+    if (lowerWords.every(w => w.slice(-len) === suffix)) commonEndLen = len;
+    else break;
   }
-  return [lo === Infinity ? 1 : lo, hi === -Infinity ? 5 : hi];
+  const suffixRatio = commonEndLen / maxLen;
+  const suffixScore = suffixRatio >= 0.6 ? 2 : suffixRatio >= 0.4 ? 1.5 : suffixRatio >= 0.2 ? 1 : 0.5;
+
+  // 因子 4：已学比例 —— 未学的词不存在混淆
+  let learnedRatio = 1;
+  if (learnedIds && learnedIds.size > 0) {
+    const learned = members.filter(m => learnedIds.has(m.id)).length;
+    learnedRatio = learned / members.length;
+  }
+  const learnScore = learnedRatio * 1;
+
+  const raw = diffScore + lenScore + suffixScore + learnScore;
+  // 归一到 1-5（raw 范围约 2~8.5）
+  const normalized = Math.round(Math.min(5, Math.max(1, (raw - 2) / 1.5 + 1)));
+  return normalized;
 }
 
 /**
@@ -64,6 +100,8 @@ function computeDaysSinceReview(
 export interface GroupConfusionOptions {
   /** SRS 状态映射（可选），用于计算"距上次复习天数" */
   srsMap?: Record<string, SrsState>;
+  /** 已学单词 ID 集合（可选），用于计算混淆风险中的已学比例 */
+  learnedIds?: Set<string>;
   /** 当前时间戳（默认 Date.now），便于测试 */
   now?: number;
 }
@@ -72,13 +110,13 @@ export interface GroupConfusionOptions {
  * 把同 confusionGroupId 的词归类到一起
  * 单独成组的（成员数 >= 2）才返回，否则视为无配对
  *
- * 可传入 SRS 上下文，扩展每组的元信息（diffCount / difficultyRange / daysSinceReview）。
+ * 可传入 SRS / learnedIds 上下文，扩展每组的元信息（diffCount / confusionRisk / daysSinceReview）。
  */
 export function groupConfusionPairs(
   words: Word[],
   options: GroupConfusionOptions = {},
 ): ConfusionGroup[] {
-  const { srsMap, now = Date.now() } = options;
+  const { srsMap, learnedIds, now = Date.now() } = options;
 
   // 1. 先按显式 confusionGroupId 归类
   const map = new Map<string, Word[]>();
@@ -98,10 +136,11 @@ export function groupConfusionPairs(
   for (const members of all) {
     if (members.length >= 2) {
       members.sort((a, b) => a.english.localeCompare(b.english));
+      const dc = computeDiffCount(members);
       result.push({
         members,
-        diffCount: computeDiffCount(members),
-        difficultyRange: computeDifficultyRange(members),
+        diffCount: dc,
+        confusionRisk: computeConfusionRisk(members, dc, learnedIds),
         daysSinceReview: computeDaysSinceReview(members, srsMap, now),
       });
     }

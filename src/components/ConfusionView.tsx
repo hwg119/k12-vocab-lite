@@ -11,10 +11,12 @@ interface ConfusionViewProps {
   onStartPair: (queue: Word[]) => void;
   /** 当前学段的 SRS 映射，用于计算"距上次复习天数" */
   srsMap?: Record<string, SrsState>;
+  /** 已学单词 ID 集合，用于计算混淆风险中的已学比例 */
+  learnedIds?: Set<string>;
 }
 
-/** 难度区间筛选档位 */
-type DifficultyBucket = 'all' | '1-2' | '2-3' | '3-4' | '4-5';
+/** 混淆风险筛选档位 */
+type RiskBucket = 'all' | '1' | '2' | '3' | '4' | '5';
 /** 差异字符数筛选档位 */
 type DiffBucket = 'all' | '1' | '2' | '3+';
 /** 复习间隔筛选档位 */
@@ -34,32 +36,26 @@ export const ConfusionView: React.FC<ConfusionViewProps> = ({
   onGoHome,
   onStartPair,
   srsMap,
+  learnedIds,
 }) => {
   const groups = useMemo<ConfusionGroup[]>(
-    () => groupConfusionPairs(words, { srsMap }),
-    [words, srsMap],
+    () => groupConfusionPairs(words, { srsMap, learnedIds }),
+    [words, srsMap, learnedIds],
   );
 
   // 搜索 + 多维筛选
   const [keyword, setKeyword] = useState('');
   const [sizeFilter, setSizeFilter] = useState<'all' | '2' | '3+'>('all');
-  const [difficultyFilter, setDifficultyFilter] = useState<DifficultyBucket>('all');
+  const [difficultyFilter, setDifficultyFilter] = useState<RiskBucket>('all');
   const [diffFilter, setDiffFilter] = useState<DiffBucket>('all');
   const [reviewFilter, setReviewFilter] = useState<ReviewBucket>('all');
 
   /**
-   * 难度区间匹配：组内 difficultyRange 与档位区间有交集即保留
-   * 例如 [2,4] 与档位 [1-2] 相交 → 保留
+   * 混淆风险匹配：单一值精确匹配
    */
-  const matchDifficulty = (range: [number, number], bucket: DifficultyBucket): boolean => {
+  const matchRisk = (risk: number, bucket: RiskBucket): boolean => {
     if (bucket === 'all') return true;
-    const [mapMin, mapMax] = {
-      '1-2': [1, 2],
-      '2-3': [2, 3],
-      '3-4': [3, 4],
-      '4-5': [4, 5],
-    }[bucket];
-    return range[1] >= mapMin && range[0] <= mapMax;
+    return risk === Number(bucket);
   };
 
   /** 差异字符数匹配 */
@@ -88,8 +84,13 @@ export const ConfusionView: React.FC<ConfusionViewProps> = ({
     return false;
   };
 
-  /** 筛选维度 chip 计数（避免每帧 8 次全表扫描） */
+  /** 筛选维度 chip 计数（避免每帧多次全表扫描） */
   const chipCounts = useMemo(() => ({
+    risk1: groups.filter(g => g.confusionRisk === 1).length,
+    risk2: groups.filter(g => g.confusionRisk === 2).length,
+    risk3: groups.filter(g => g.confusionRisk === 3).length,
+    risk4: groups.filter(g => g.confusionRisk === 4).length,
+    risk5: groups.filter(g => g.confusionRisk === 5).length,
     diff1: groups.filter(g => g.diffCount === 1).length,
     diff2: groups.filter(g => g.diffCount === 2).length,
     diff3: groups.filter(g => g.diffCount >= 3).length,
@@ -104,7 +105,7 @@ export const ConfusionView: React.FC<ConfusionViewProps> = ({
     return groups.filter(g => {
       if (sizeFilter === '2' && g.members.length !== 2) return false;
       if (sizeFilter === '3+' && g.members.length < 3) return false;
-      if (!matchDifficulty(g.difficultyRange, difficultyFilter)) return false;
+      if (!matchRisk(g.confusionRisk, difficultyFilter)) return false;
       if (!matchDiff(g.diffCount, diffFilter)) return false;
       if (!matchReview(g.daysSinceReview, reviewFilter)) return false;
       if (!kw) return true;
@@ -168,14 +169,15 @@ export const ConfusionView: React.FC<ConfusionViewProps> = ({
             ))}
           </FilterRow>
 
-          {/* 难度区间 */}
-          <FilterRow label="难度">
+          {/* 混淆风险 */}
+          <FilterRow label="风险">
             {([
               { key: 'all', label: '全部' },
-              { key: '1-2', label: '1-2 ★' },
-              { key: '2-3', label: '2-3 ★' },
-              { key: '3-4', label: '3-4 ★' },
-              { key: '4-5', label: '4-5 ★' },
+              { key: '1', label: `1 低 (${chipCounts.risk1})` },
+              { key: '2', label: `2 (${chipCounts.risk2})` },
+              { key: '3', label: `3 (${chipCounts.risk3})` },
+              { key: '4', label: `4 (${chipCounts.risk4})` },
+              { key: '5', label: `5 高 (${chipCounts.risk5})` },
             ] as const).map(opt => (
               <Chip
                 key={opt.key}
@@ -251,7 +253,7 @@ export const ConfusionView: React.FC<ConfusionViewProps> = ({
       )}
 
       <div className="mt-6 text-xs text-slate-400 text-center">
-        黄色高亮 = 形近词的差异字符 · 可按难度/差异字符/复习间隔筛选 · 点击"进入学习"可专项攻克该组
+        黄色高亮 = 形近词的差异字符 · 可按混淆风险/差异字符/复习间隔筛选 · 点击"进入学习"可专项攻克该组
       </div>
     </div>
   );
@@ -319,7 +321,7 @@ const CompareCard: React.FC<{
             </span>
           )}
           <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-full border border-slate-200">
-            难度 {group.difficultyRange[0]}{group.difficultyRange[0] !== group.difficultyRange[1] ? `-${group.difficultyRange[1]}` : ''} ★
+            风险 {group.confusionRisk} ★
           </span>
           {!Number.isFinite(group.daysSinceReview) ? (
             <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-full border border-slate-200">
