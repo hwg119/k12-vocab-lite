@@ -1,5 +1,6 @@
 export { Dashboard } from './Dashboard';
 export { StudyMode } from './StudyMode';
+export { SpellingMode } from './SpellingMode';
 export { QuizMode } from './QuizMode';
 export { QuizEntry } from './QuizEntry';
 export { ChallengeInput } from './ChallengeInput';

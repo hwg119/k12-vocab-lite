@@ -11,6 +11,8 @@ interface MistakesViewProps {
   onGoHome: () => void;
   /** 进入专项复习 - 直接复用 StudyMode 的队列模式 */
   onStartReview: (queue: Word[]) => void;
+  /** 进入拼写默写 - 看中文主动拼出英文（不与到期挂钩，全量出题） */
+  onStartSpelling: (queue: Word[]) => void;
   /** 一键清空错词（不弹窗，需要用户自己二次确认） */
   onClearMistakes: () => void;
 }
@@ -29,6 +31,7 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
   srsMap,
   onGoHome,
   onStartReview,
+  onStartSpelling,
   onClearMistakes,
 }) => {
   // 二次确认态
@@ -168,6 +171,12 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
               className="mt-2 w-full py-2 text-rose-500 hover:text-rose-700 text-sm underline underline-offset-4 transition-colors"
             >
               复习全部 {total} 个错词
+            </button>
+            <button
+              onClick={() => onStartSpelling(reviewableQueue)}
+              className="mt-3 w-full py-2.5 bg-rose-600 text-white font-semibold rounded-lg hover:bg-rose-700 shadow-lg shadow-rose-200 transition-all duration-200"
+            >
+              ✍️ 拼写默写训练（看中文 · 拼出英文）
             </button>
           </div>
 

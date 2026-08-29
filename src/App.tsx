@@ -17,6 +17,7 @@ import { APP_VERSION, LATEST_VERSION } from './version';
 import {
   Dashboard,
   StudyMode,
+  SpellingMode,
   QuizMode,
   QuizEntry,
   ChallengeInput,
@@ -205,7 +206,7 @@ export default function App() {
   }, [goBackView]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [studyQueue, setStudyQueue] = useState<Word[]>([]);
-  const [studySource, setStudySource] = useState<'default' | 'review' | 'mistakes' | 'unit' | 'confusion' | 'newWord'>('default');
+  const [studySource, setStudySource] = useState<'default' | 'review' | 'mistakes' | 'unit' | 'confusion' | 'newWord' | 'spelling'>('default');
   // 易错词"毕业"庆祝提示（专项复习连续答对达标时弹 toast）
   const [graduatedNotice, setGraduatedNotice] = useState<{ english: string; key: number } | null>(null);
   const [quizQuestions, setQuizQuestions] = useState<ReturnType<typeof generateQuiz>>([]);
@@ -282,6 +283,13 @@ export default function App() {
     setStudySource('mistakes');
     setView('study');
   }, [words, srsMap]);
+
+  // 拼写默写（易错词主动回忆）：按当前错词全量出题，不按到期
+  const startSpelling = useCallback((queue: Word[]) => {
+    setStudyQueue(queue);
+    setStudySource('spelling');
+    setView('study');
+  }, []);
 
   // 测验入口（点击进入选择模式）
   const openQuizEntry = useCallback(() => setView('quizEntry'), []);
@@ -545,7 +553,25 @@ export default function App() {
                 />
               )}
 
-              {view === 'study' && (
+              {view === 'study' && studySource === 'spelling' && (
+                <SpellingMode
+                  studyQueue={studyQueue}
+                  graduatedNotice={graduatedNotice}
+                  onSubmit={(id, fb) => {
+                    const w = words.find(x => x.id === id);
+                    const graduated = submitFeedback(w ?? id, fb);
+                    if (graduated) {
+                      setGraduatedNotice({ english: w?.english ?? id, key: Date.now() });
+                    }
+                  }}
+                  onGoHome={() => {
+                    setStudyQueue([]);
+                    setView('mistakes');
+                  }}
+                />
+              )}
+
+              {view === 'study' && studySource !== 'spelling' && (
                 <StudyMode
                   studyQueue={studyQueue}
                   learnedIds={learnedIds}
@@ -720,6 +746,7 @@ export default function App() {
                   srsMap={srsMap}
                   onGoHome={() => setView('dashboard')}
                   onStartReview={startMistakesReview}
+                  onStartSpelling={startSpelling}
                   onClearMistakes={clearMistakes}
                 />
               )}

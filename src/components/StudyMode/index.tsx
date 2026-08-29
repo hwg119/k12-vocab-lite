@@ -192,6 +192,11 @@ export const StudyMode: React.FC<StudyModeProps> = ({
             <p className="text-xl text-slate-700 leading-relaxed break-words whitespace-pre-wrap">
               {currentWord.chinese}
             </p>
+            {currentWord.exampleSentence && (
+              <p className="text-sm text-slate-500 mt-4 leading-relaxed break-words whitespace-pre-wrap italic">
+                “{currentWord.exampleSentence}”
+              </p>
+            )}
             {currentWord.mnemonic && (
               <p className="text-sm text-amber-700 mt-4 bg-amber-50 inline-block px-3 py-1.5 rounded-lg border border-amber-100">
                 💡 {currentWord.mnemonic}
