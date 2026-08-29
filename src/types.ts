@@ -74,6 +74,7 @@ export interface QuizQuestion {
  * - dueAt: 下次复习时间戳（毫秒）
  * - lastReviewedAt: 上次复习时间戳
  * - wrongCount: 错误次数（累计）
+ * - firstMasteredAt: 首次进入"已掌握"的时间戳（毫秒）。仅在第一次掌握时写入，后续复习不刷新。
  */
 export interface SrsState {
   repetitions: number;
@@ -82,6 +83,8 @@ export interface SrsState {
   dueAt: number;
   lastReviewedAt: number;
   wrongCount: number;
+  /** 首次掌握时间戳（首次标记为"已掌握"的时刻） */
+  firstMasteredAt?: number;
 }
 
 /** 每日学习打卡记录 - 用于续航/连续天数统计 */

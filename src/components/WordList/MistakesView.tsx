@@ -72,7 +72,7 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
   const reviewableQueue = sortedWords.map(s => s.word);
 
   return (
-    <div className="w-full max-w-3xl mx-auto animate-fade-in px-2">
+    <div className="w-full max-w-3xl mx-auto animate-fade-in px-2 self-stretch min-h-[60vh] sm:min-h-[70vh] flex flex-col">
       {/* 顶部 */}
       <div className="flex items-center justify-between mb-6">
         <button

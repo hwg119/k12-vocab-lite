@@ -4,7 +4,6 @@ import { STAGE_META } from './data';
 import {
   generateQuiz,
   sample,
-  selectDueWords,
   pickMistakes,
   buildDailySummaries,
   groupConfusionPairs,
@@ -71,6 +70,7 @@ export default function App() {
     summary,
     studyDays,
     markLearned,
+    unmarkLearned,
     submitFeedback,
     recordQuizAnswer,
     clearMistakes,
@@ -94,6 +94,28 @@ export default function App() {
   // 视图历史栈（用于边缘滑动返回 / 浏览器后退 / Android 返回键）
   const viewHistoryRef = useRef<AppView[]>([]);
   const lastViewRef = useRef<AppView>('dashboard');
+  /**
+   * 已掌握视图的数据版本号：每次 view 切到 'learned' 时自增。
+   * LearnedView 内部 useMemo 用此值判断是否重算已掌握列表，
+   * 标记/取消标记本身不会触发重算（避免 1000 词的列表在每点一次时全量重排）。
+   */
+  const learnedDataVersionRef = useRef(0);
+  const [learnedDataVersion, setLearnedDataVersion] = useState(0);
+  /**
+   * 词典视图的数据版本号：每次 view 切到 'list' 时自增。同上，标记/取消标记
+   * 本身不会触发列表重算。
+   */
+  const listDataVersionRef = useRef(0);
+  const [listDataVersion, setListDataVersion] = useState(0);
+  useEffect(() => {
+    if (view === 'learned') {
+      learnedDataVersionRef.current += 1;
+      setLearnedDataVersion(learnedDataVersionRef.current);
+    } else if (view === 'list') {
+      listDataVersionRef.current += 1;
+      setListDataVersion(listDataVersionRef.current);
+    }
+  }, [view]);
 
   /**
    * 统一的视图切换函数：
@@ -206,12 +228,22 @@ export default function App() {
 
   const sessionSize = 50;
 
-  // 启动学习模式 - SRS 优先
+  // 启动学习模式 - SRS 复习（只取剩余待复习词，不补新词/远期词）
   const startStudy = useCallback(() => {
-    const priority = selectDueWords(words, srsMap, sessionSize);
-    const pool = priority.length > 0 ? priority : words.map(w => w.id);
-    const session = sample(words.filter(w => pool.includes(w.id)), sessionSize);
-    setStudyQueue(session);
+    const now = Date.now();
+    // 只筛出"真正到期需复习"的词（有 SRS 记录且 dueAt <= now）
+    const dueIds = words
+      .filter(w => {
+        const key = wordKey(w);
+        const state = srsMap[key] ?? srsMap[w.id];
+        return state && (state.dueAt === 0 || state.dueAt <= now);
+      })
+      .map(w => w.id);
+    // 已学过的词中，剩余待复习的就是 dueIds；样本抽样避免每次都按同一顺序
+    const session = sample(words.filter(w => dueIds.includes(w.id)), sessionSize);
+    // 兜底：如果一个都没筛出来，用全部 words（极端情况下 srsMap 全空）
+    const finalQueue = session.length > 0 ? session : sample(words, sessionSize);
+    setStudyQueue(finalQueue);
     setStudySource('review');
     setView('study');
   }, [words, srsMap]);
@@ -474,7 +506,7 @@ export default function App() {
           </header>
 
           <main className={`flex-1 relative w-full overflow-y-auto overflow-x-hidden ${focusMode ? 'pb-0' : 'pb-20 md:pb-0'}`}>
-            <div className="max-w-6xl mx-auto min-h-full flex flex-col justify-center box-border p-3 sm:p-4 lg:p-6">
+            <div className={`max-w-6xl mx-auto min-h-full flex flex-col box-border p-3 sm:p-4 lg:p-6 ${view === 'learned' || view === 'mistakes' || view === 'confusions' ? 'justify-start' : 'justify-center'}`}>
               {view === 'dashboard' && (
                 <Dashboard
                   words={words}
@@ -640,8 +672,10 @@ export default function App() {
                   words={words}
                   learnedIds={learnedIds}
                   onMarkAsLearned={markLearned}
+                  onUnmarkLearned={unmarkLearned}
                   title="词典"
                   showMarkButton={true}
+                  dataVersion={listDataVersion}
                 />
               )}
 
@@ -651,6 +685,8 @@ export default function App() {
                   learnedIds={learnedIds}
                   srsMap={srsMap}
                   onGoHome={() => setView('dashboard')}
+                  onUnmarkLearned={unmarkLearned}
+                  dataVersion={learnedDataVersion}
                 />
               )}
 

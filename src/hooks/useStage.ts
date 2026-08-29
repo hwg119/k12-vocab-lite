@@ -183,6 +183,32 @@ export function useStage(): UseStageReturn {
       });
       changed = true;
     }
+    // srsMap：为旧记录兜底 firstMasteredAt（用 lastReviewedAt 作为近似首次掌握时间）
+    let needsFirstMastered = false;
+    for (const k of Object.keys(srsMap)) {
+      const s = srsMap[k];
+      if (s && s.firstMasteredAt === undefined) {
+        needsFirstMastered = true;
+        break;
+      }
+    }
+    if (needsFirstMastered) {
+      setSrsMap(prev => {
+        let mutated = false;
+        const next = { ...prev };
+        for (const k of Object.keys(prev)) {
+          const s = next[k];
+          if (!s || s.firstMasteredAt !== undefined) continue;
+          // 老数据：上次复习时间 ≈ 首次掌握时间；从未复习的（手动标记）按当前时间兜底
+          next[k] = {
+            ...s,
+            firstMasteredAt: s.lastReviewedAt > 0 ? s.lastReviewedAt : Date.now(),
+          };
+          mutated = true;
+        }
+        return mutated ? next : prev;
+      });
+    }
     if (changed) {
       console.info('[useStage] 已迁移旧格式数据到 wordKey');
     }
@@ -285,9 +311,19 @@ export function useStage(): UseStageReturn {
         return s;
       });
       setSrsMap(prev => {
-        const cur = prev[key] ?? prev[legacyId] ?? createInitialSrs();
-        if (prev[key]) return prev;
-        return { ...prev, [key]: cur, [legacyId]: cur };
+        // 已存在的 SRS 不覆盖（保留复习间隔 / 上次复习时间等）
+        if (prev[key] || prev[legacyId]) {
+          // 但如果存在记录里没 firstMasteredAt（老数据迁移漏网），补一个
+          const existing = prev[key] ?? prev[legacyId];
+          if (existing && existing.firstMasteredAt === undefined) {
+            const patched = { ...existing, firstMasteredAt: existing.lastReviewedAt || Date.now() };
+            return { ...prev, [key]: patched, [legacyId]: patched };
+          }
+          return prev;
+        }
+        // 新建的 SRS：手动标记 → firstMasteredAt = now, lastReviewedAt = 0（不参与复习循环）
+        const base = { ...createInitialSrs(), firstMasteredAt: Date.now(), lastReviewedAt: 0 };
+        return { ...prev, [key]: base, [legacyId]: base };
       });
       setMistakeIds(prev => {
         const without = prev.filter(x => x !== key && x !== legacyId);
@@ -340,6 +376,15 @@ export function useStage(): UseStageReturn {
       setSrsMap(prev => {
         const cur = prev[key] ?? prev[legacyId] ?? createInitialSrs();
         const next = applyReview(cur, feedback);
+        // 首次掌握（!wasLearnedBefore）→ 写入首次掌握时间戳
+        //   后续复习（wasLearnedBefore 为 true）→ 保留旧的 firstMasteredAt
+        if (!wasLearnedBefore && next.firstMasteredAt === undefined) {
+          return {
+            ...prev,
+            [key]: { ...next, firstMasteredAt: Date.now() },
+            [legacyId]: { ...next, firstMasteredAt: Date.now() },
+          };
+        }
         return { ...prev, [key]: next, [legacyId]: next };
       });
       // 2. 联动易错本与掌握集合

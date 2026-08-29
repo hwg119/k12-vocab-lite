@@ -117,7 +117,7 @@ export const ConfusionView: React.FC<ConfusionViewProps> = ({
   }, [groups, keyword, sizeFilter, difficultyFilter, diffFilter, reviewFilter]);
 
   return (
-    <div className="w-full max-w-4xl mx-auto animate-fade-in px-2">
+    <div className="w-full max-w-4xl mx-auto animate-fade-in px-2 self-stretch min-h-[60vh] sm:min-h-[70vh] flex flex-col">
       {/* 顶部 */}
       <div className="flex items-center justify-between mb-4">
         <button
