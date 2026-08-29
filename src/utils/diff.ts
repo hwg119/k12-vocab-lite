@@ -73,6 +73,15 @@ export function highlightDiff(englishWords: string[]): DiffChar[][] {
   const prefixLen = commonPrefixLen(words);
   const suffixLen = commonSuffixLen(words);
 
+  // 步骤 0（修正）：当前缀+后缀长度覆盖了最短词的全部字符时，
+  // 中间区段为空，所有差异字符都被错标为"公共后缀"。
+  // 通过缩减有效后缀长度，强制中间区段至少暴露 1 个字符。
+  const minLen = Math.min(...words.map(w => w.length));
+  const effectiveSuffixLen =
+    prefixLen + suffixLen >= minLen
+      ? Math.max(0, minLen - prefixLen - 1)
+      : suffixLen;
+
   // 步骤 2：找出"中间区段"的差异位置（仅对齐中间非公共部分）
   // 中间区段范围：[prefixLen, len - suffixLen)
   // 如果中间区段在某一位置上字符与其它任一词的中间不一致 → 差异位
@@ -81,7 +90,7 @@ export function highlightDiff(englishWords: string[]): DiffChar[][] {
   // 中间区段做"按位置"差异比对（处理 "adapt vs adopt" 这种替换）
   const midStart = prefixLen;
   const maxLen = Math.max(...words.map(w => w.length));
-  const midEnd = maxLen - suffixLen;
+  const midEnd = maxLen - effectiveSuffixLen;
 
   for (let pos = midStart; pos < midEnd; pos++) {
     const seen = new Set<string>();
@@ -104,7 +113,7 @@ export function highlightDiff(englishWords: string[]): DiffChar[][] {
     for (let pos = 0; pos < w.length; pos++) {
       // 公共前缀/后缀内的字符 → NOT diff
       const inPrefix = pos < prefixLen;
-      const inSuffix = pos >= w.length - suffixLen;
+      const inSuffix = pos >= w.length - effectiveSuffixLen;
       out.push({
         ch: w[pos],
         pos,

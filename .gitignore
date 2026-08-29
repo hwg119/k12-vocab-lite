@@ -50,3 +50,7 @@ android/local.properties
 
 # Capacitor
 ios/
+
+# Docs & temp
+docs/
+*.patch

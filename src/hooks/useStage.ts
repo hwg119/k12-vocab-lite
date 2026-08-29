@@ -74,6 +74,8 @@ export interface UseStageReturn {
   /** 答题后反馈延迟（毫秒）。sprint 模式下反馈期内会冻结倒计时 */
   quizFeedbackDelayMs: number;
   setQuizFeedbackDelayMs: (ms: number) => void;
+  lookupSrs: (wordOrId: Word | string) => SrsState | undefined;
+  isLearned: (wordOrId: Word | string) => boolean;
 }
 
 export function useStage(): UseStageReturn {
@@ -288,28 +290,25 @@ export function useStage(): UseStageReturn {
     (isCorrect: boolean, word?: Word) => {
       // 打卡统计
       setStudyDays(prev => recordActivity(prev, 'quizAnswer', isCorrect));
-      // 答错则加入易错本（已掌握的不重复记录）
-      if (!isCorrect && word) {
-        const key = wordKey(word);
-        const legacyId = word.id;
-        setLearnedIds(prev => {
-          if (prev.has(key) || prev.has(legacyId)) return prev;
-          return prev;
-        });
-        // 同步更新 SRS 错误次数（同时写入 key 和旧 id，兼容历史数据）
+      if (!word) return;
+      const key = wordKey(word);
+      const legacyId = word.id;
+      const mastered = learnedIds.has(key) || learnedIds.has(legacyId);
+      // 答错时：已掌握的不处理，未掌握的才记入易错本并更新 SRS
+      if (!isCorrect && !mastered) {
+        // 更新 SRS（走 SM2 曲线，而非仅累加 wrongCount）
         setSrsMap(prev => {
           const cur = prev[key] ?? prev[legacyId] ?? createInitialSrs();
-          const next = { ...cur, wrongCount: (cur.wrongCount ?? 0) + 1 };
+          const next = applyReview(cur, 'unknown');
           return { ...prev, [key]: next, [legacyId]: next };
         });
-        // mistakeIds 优先存 wordKey（稳定），但也兼容旧数据中的 legacy id
         setMistakeIds(prev => {
           if (prev.includes(key) || prev.includes(legacyId)) return prev;
           return [...prev, key];
         });
       }
     },
-    [setStudyDays, setSrsMap, setMistakeIds, setLearnedIds],
+    [learnedIds, setStudyDays, setSrsMap, setMistakeIds],
   );
 
   const resetProgress = useCallback(() => {
@@ -325,6 +324,32 @@ export function useStage(): UseStageReturn {
 
   const setFocusMode = useCallback((v: boolean) => setFocusModeRaw(v), [setFocusModeRaw]);
   const setQuizFeedbackDelayMs = useCallback((ms: number) => setQuizFeedbackDelayMsRaw(ms), [setQuizFeedbackDelayMsRaw]);
+
+  /** 统一的 SRS 查询：传入 Word 或 wordId，自动用 wordKey 取 srsMap 值 */
+  const lookupSrs = useCallback(
+    (wordOrId: Word | string): SrsState | undefined => {
+      const word = typeof wordOrId === 'string'
+        ? words.find(w => w.id === wordOrId)
+        : wordOrId;
+      if (!word) return undefined;
+      const key = wordKey(word);
+      return srsMap[key] ?? srsMap[word.id];
+    },
+    [srsMap, words],
+  );
+
+  /** 统一的掌握状态查询 */
+  const isLearned = useCallback(
+    (wordOrId: Word | string): boolean => {
+      const word = typeof wordOrId === 'string'
+        ? words.find(w => w.id === wordOrId)
+        : wordOrId;
+      if (!word) return false;
+      const key = wordKey(word);
+      return learnedIds.has(key) || learnedIds.has(word.id);
+    },
+    [learnedIds, words],
+  );
 
   return {
     stage,
@@ -348,5 +373,7 @@ export function useStage(): UseStageReturn {
     setFocusMode,
     quizFeedbackDelayMs,
     setQuizFeedbackDelayMs,
+    lookupSrs,
+    isLearned,
   };
 }

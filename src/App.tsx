@@ -95,54 +95,37 @@ export default function App() {
    *   - 同步浏览器 history（让浏览器后退按钮/未来 Android 硬件返回都能用）
    *   - 然后设置新 view
    */
-  const setView = useCallback((next: AppView | ((prev: AppView) => AppView)) => {
-    if (typeof next === 'function') {
-      // 函数式更新：拿到 prev 再包装
-      setViewRaw(prev => {
-        const real = next(prev);
-        if (real === prev) return prev;
-        viewHistoryRef.current.push(prev);
-        lastViewRef.current = real;
-        if (typeof window !== 'undefined') {
-          try { window.history.pushState({ view: real }, '', `#${real}`); } catch {}
-        }
-        return real;
-      });
-      return;
+  const setView = useCallback((next: AppView) => {
+    const prev = lastViewRef.current;
+    if (next === prev) return;
+    viewHistoryRef.current.push(prev);
+    lastViewRef.current = next;
+    setViewRaw(next);
+    if (typeof window !== 'undefined') {
+      try { window.history.pushState({ view: next }, '', `#${next}`); } catch {}
     }
-    setViewRaw(prev => {
-      if (next === prev) return prev;
-      viewHistoryRef.current.push(prev);
-      lastViewRef.current = next;
-      if (typeof window !== 'undefined') {
-        try { window.history.pushState({ view: next }, '', `#${next}`); } catch {}
-      }
-      return next;
-    });
   }, []);
 
   // 边缘滑动返回 / 浏览器返回：从栈中弹一个（不走 setView，避免再次入栈）
+  // 注意：viewHistoryRef 与 lastViewRef 的更新放在 setViewRaw 之前，
+  // 避免 React 18 StrictMode 调用 updater 两次时导致栈被多 pop 一次。
   const goBackView = useCallback(() => {
-    setViewRaw(prev => {
-      const stack = viewHistoryRef.current;
-      if (stack.length === 0) {
-        return prev; // 已在首页，不再返回
+    const stack = viewHistoryRef.current;
+    if (stack.length === 0) return; // 已在首页
+    let target = stack.pop() as AppView;
+    // 从 quiz/study/challengeInput 退出时：跳过连续的同类页面
+    if (lastViewRef.current === 'quiz' || lastViewRef.current === 'study' || lastViewRef.current === 'challengeInput') {
+      while (stack.length > 0 && (target === 'quiz' || target === 'study' || target === 'challengeInput')) {
+        target = stack.pop() as AppView;
       }
-      let target = stack.pop() as AppView;
-      // 从 quiz/study/challengeInput 退出时：跳过连续的同类页面
-      if (prev === 'quiz' || prev === 'study' || prev === 'challengeInput') {
-        while (stack.length > 0 && (target === 'quiz' || target === 'study' || target === 'challengeInput')) {
-          target = stack.pop() as AppView;
-        }
-        if (target === 'quiz' || target === 'study' || target === 'challengeInput') target = 'dashboard';
-      }
-      lastViewRef.current = target;
-      // 同步浏览器 history（replaceState 避免再添记录，因为浏览器已 popstate）
-      if (typeof window !== 'undefined') {
-        try { window.history.replaceState({ view: target }, '', `#${target}`); } catch {}
-      }
-      return target;
-    });
+      if (target === 'quiz' || target === 'study' || target === 'challengeInput') target = 'dashboard';
+    }
+    lastViewRef.current = target;
+    // 同步浏览器 history（replaceState 避免再添记录，因为浏览器已 popstate）
+    if (typeof window !== 'undefined') {
+      try { window.history.replaceState({ view: target }, '', `#${target}`); } catch {}
+    }
+    setViewRaw(target);
   }, []);
 
   // 监听浏览器后退 / 前进按钮（popstate）→ 走 goBackView
@@ -167,11 +150,20 @@ export default function App() {
         const mod = await import('@capacitor/app').catch(() => null);
         if (!mod) return;
         const listener = await mod.App.addListener('backButton', () => {
-          // 由 setView 历史栈决定：能返回就返回；在首页则让原生处理（退出 App）
-          if (viewHistoryRef.current.length === 0) {
+          // 在首页 → 退出 App；在其他页面 → goBackView 或直接跳 dashboard
+          if (lastViewRef.current === 'dashboard') {
             mod.App.exitApp();
           } else {
-            goBackView();
+            if (viewHistoryRef.current.length > 0) {
+              goBackView();
+            } else {
+              // 栈已空（edge case：直接从 URL hash 进入某页面），跳回首页
+              lastViewRef.current = 'dashboard';
+              setViewRaw('dashboard');
+              if (typeof window !== 'undefined') {
+                try { window.history.replaceState({ view: 'dashboard' }, '', '#dashboard'); } catch {}
+              }
+            }
           }
         });
         cleanup = () => { listener.remove(); };
@@ -186,6 +178,9 @@ export default function App() {
   const [studySource, setStudySource] = useState<'default' | 'review' | 'mistakes' | 'unit' | 'confusion'>('default');
   const [quizQuestions, setQuizQuestions] = useState<ReturnType<typeof generateQuiz>>([]);
   const [quizMode, setQuizMode] = useState<'daily' | 'sprint' | 'challenge'>('daily');
+  // 测验重启计数器——作为 QuizMode 的 key，强制重新挂载
+  // 从 quizEntry 进入或"再来一次"时递增
+  const [quizMountKey, setQuizMountKey] = useState(0);
   // 挑战模式相关 state
   const [challengeSeed, setChallengeSeed] = useState<string | undefined>(undefined);
   const [opponentResult, setOpponentResult] = useState<{ score: number; timeSec: number } | null>(null);
@@ -240,6 +235,7 @@ export default function App() {
   const startQuizDaily = useCallback(() => {
     setQuizQuestions(generateQuiz(words, 20));
     setQuizMode('daily');
+    setQuizMountKey(k => k + 1);
     setView('quiz');
   }, [words]);
 
@@ -247,6 +243,7 @@ export default function App() {
   const startQuizSprint = useCallback(() => {
     setQuizQuestions(generateQuiz(words, 20));
     setQuizMode('sprint');
+    setQuizMountKey(k => k + 1);
     setView('quiz');
   }, [words]);
 
@@ -257,7 +254,7 @@ export default function App() {
       // 挑战模式重玩：保持种子不变
       if (challengeSeed) {
         setQuizQuestions(generateQuiz(words, 20, challengeSeed));
-        setView('quiz');
+        setQuizMountKey(k => k + 1);
       }
     } else startQuizDaily();
   }, [quizMode, startQuizDaily, startQuizSprint, challengeSeed, words]);
@@ -298,28 +295,16 @@ export default function App() {
 
   // 挑战模式重玩（答完对方题后，用新 seed 再出一套题让好友玩）
 
-  // 切到下一个 view 时清残留队列 + 维护返回栈
+  // 切到下一个 view 时清残留队列 + 跳回首页时清空返回栈
   useEffect(() => {
     if (view !== 'study') {
       setStudyQueue([]);
       setStudySource('default');
     }
     if (view !== 'quiz') setQuizQuestions([]);
-    // 维护历史栈：把「上一刻的 view」压栈
-    // 但忽略任务型页面（quiz/study/challengeInput）作为"上一刻"，避免返回栈塞满
-    if (lastViewRef.current !== view) {
-      const TASK_PAGES: AppView[] = ['quiz', 'study', 'challengeInput'];
-      const prev = lastViewRef.current;
-      // 跳过任务型页面（它们被返回时会一次性跳到非任务页）
-      if (!TASK_PAGES.includes(prev)) {
-        viewHistoryRef.current.push(prev);
-        if (viewHistoryRef.current.length > 50) viewHistoryRef.current.shift();
-      }
-      // 跳回首页清空栈（用户语义上"重新开始"）
-      if (view === 'dashboard') {
-        viewHistoryRef.current = [];
-      }
-      lastViewRef.current = view;
+    // 跳回首页时清空返回栈（用户语义上"重新开始"）
+    if (view === 'dashboard') {
+      viewHistoryRef.current = [];
     }
   }, [view]);
 
@@ -564,6 +549,7 @@ export default function App() {
                     />
                   ) : (
                     <QuizMode
+                      key={`${quizMode}-${quizMountKey}`}
                       questions={quizQuestions}
                       onGoHome={() => setView('dashboard')}
                       onRestart={restartQuiz}

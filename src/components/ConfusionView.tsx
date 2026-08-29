@@ -88,6 +88,17 @@ export const ConfusionView: React.FC<ConfusionViewProps> = ({
     return false;
   };
 
+  /** 筛选维度 chip 计数（避免每帧 8 次全表扫描） */
+  const chipCounts = useMemo(() => ({
+    diff1: groups.filter(g => g.diffCount === 1).length,
+    diff2: groups.filter(g => g.diffCount === 2).length,
+    diff3: groups.filter(g => g.diffCount >= 3).length,
+    reviewNever: groups.filter(g => !Number.isFinite(g.daysSinceReview)).length,
+    reviewWeek: groups.filter(g => Number.isFinite(g.daysSinceReview) && g.daysSinceReview <= 7).length,
+    reviewMonth: groups.filter(g => Number.isFinite(g.daysSinceReview) && g.daysSinceReview > 7 && g.daysSinceReview <= 30).length,
+    reviewOlder: groups.filter(g => Number.isFinite(g.daysSinceReview) && g.daysSinceReview > 30).length,
+  }), [groups]);
+
   const filtered = useMemo<ConfusionGroup[]>(() => {
     const kw = keyword.trim().toLowerCase();
     return groups.filter(g => {
@@ -179,9 +190,9 @@ export const ConfusionView: React.FC<ConfusionViewProps> = ({
           <FilterRow label="差异字符">
             {([
               { key: 'all', label: '全部' },
-              { key: '1', label: `1 处 (${groups.filter(g => g.diffCount === 1).length})` },
-              { key: '2', label: `2 处 (${groups.filter(g => g.diffCount === 2).length})` },
-              { key: '3+', label: `3+ 处 (${groups.filter(g => g.diffCount >= 3).length})` },
+              { key: '1', label: `1 处 (${chipCounts.diff1})` },
+              { key: '2', label: `2 处 (${chipCounts.diff2})` },
+              { key: '3+', label: `3+ 处 (${chipCounts.diff3})` },
             ] as const).map(opt => (
               <Chip
                 key={opt.key}
@@ -196,10 +207,10 @@ export const ConfusionView: React.FC<ConfusionViewProps> = ({
           <FilterRow label="上次复习">
             {([
               { key: 'all', label: '全部' },
-              { key: 'never', label: `从未 (${groups.filter(g => !Number.isFinite(g.daysSinceReview)).length})` },
-              { key: 'week', label: `本周 (${groups.filter(g => Number.isFinite(g.daysSinceReview) && g.daysSinceReview <= 7).length})` },
-              { key: 'month', label: `一月内 (${groups.filter(g => Number.isFinite(g.daysSinceReview) && g.daysSinceReview > 7 && g.daysSinceReview <= 30).length})` },
-              { key: 'older', label: `超过 30 天 (${groups.filter(g => Number.isFinite(g.daysSinceReview) && g.daysSinceReview > 30).length})` },
+              { key: 'never', label: `从未 (${chipCounts.reviewNever})` },
+              { key: 'week', label: `本周 (${chipCounts.reviewWeek})` },
+              { key: 'month', label: `一月内 (${chipCounts.reviewMonth})` },
+              { key: 'older', label: `超过 30 天 (${chipCounts.reviewOlder})` },
             ] as const).map(opt => (
               <Chip
                 key={opt.key}
