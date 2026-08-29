@@ -1,6 +1,6 @@
 # 🎓 K12 Vocab Master (K12 全学段单词大师)
 
-> **v2.0.1 — 易混词筛选增强**  
+> **v2.0.1 — 易混词筛选增强 + 答题反馈可配置 + sprint 反馈期冻结**  
 > 一款面向 K12 全学段（小学/初中/高中）的极简英语单词记忆应用。  
 > 三学段完整词库（小学420+ / 初中1600 / 高考3817）；  
 > 纯前端、零后端、零 AI、零拼写负担；  
@@ -255,7 +255,7 @@ cd android
 - ✨ 卡片头部新增"差异处数 / 难度 ★ / 复习状态"标签，复习状态按临近遗忘程度着色（绿→黄→红→灰）
 - ✨ `ConfusionGroup` 扩展元信息字段：`diffCount` / `difficultyRange` / `daysSinceReview`，由 `groupConfusionPairs(words, { srsMap })` 计算
 - 🗑️ 移除 v1.0 → v2.0 老格式数据迁移逻辑（`gaokao-learned` 自动迁入 senior 已废弃）
-- 🔧 Android `versionName` 1.1.0 → 1.2.0（`versionCode` 2 → 3）
+- 🔧 Android `versionName` 1.1.0 → 1.3.0（`versionCode` 2 → 4）
 
 ### v2.0.0 (2026-08-28) — 全量二次开发
 - ✨ 三学段适配（小学/初中/高中），数据完全隔离

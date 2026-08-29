@@ -16,6 +16,8 @@ interface QuizModeProps {
   challengeSeed?: string;
   /** 测验结束时的回调（用于挑战模式把成绩+用时传给上层） */
   onFinish?: (result: { score: number; timeSec: number }) => void;
+  /** 答题后展示反馈的时长（ms）。sprint 模式下反馈期内倒计时会冻结 */
+  feedbackDelayMs?: number;
 }
 
 /**
@@ -35,6 +37,7 @@ export const QuizMode: React.FC<QuizModeProps> = ({
   mode = 'daily',
   challengeSeed,
   onFinish,
+  feedbackDelayMs = 1000,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
@@ -43,6 +46,8 @@ export const QuizMode: React.FC<QuizModeProps> = ({
   const [timeLeft, setTimeLeft] = useState(mode === 'sprint' ? 60 : 0);
   const [challengeCode, setChallengeCode] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  /** sprint 模式：反馈期内是否冻结倒计时 */
+  const [timerFrozen, setTimerFrozen] = useState(false);
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -63,9 +68,19 @@ export const QuizMode: React.FC<QuizModeProps> = ({
     onAnswer?.(isCorrect, currentQuestion.word.id);
   }, [currentQuestion.correctIndex, currentQuestion.word.id, selectedOption, onAnswer]);
 
-  // sprint 模式倒计时
+  // sprint 模式倒计时：受 timerFrozen 控制
+  //   - timerFrozen = true  → 清除 interval（反馈期内暂停计时）
+  //   - timerFrozen = false → 重启 interval（反馈结束后恢复计时）
   useEffect(() => {
     if (mode !== 'sprint') return;
+    if (timerFrozen) {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      return;
+    }
+    if (isFinished) return;
     intervalRef.current = setInterval(() => {
       setTimeLeft(t => {
         if (t <= 1) {
@@ -77,9 +92,12 @@ export const QuizMode: React.FC<QuizModeProps> = ({
       });
     }, 1000);
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
     };
-  }, [mode]);
+  }, [mode, timerFrozen, isFinished]);
 
   // 全部题目答完时停止 sprint 计时
   useEffect(() => {
@@ -91,8 +109,12 @@ export const QuizMode: React.FC<QuizModeProps> = ({
   }, [currentIndex, questions.length, mode]);
 
   // 使用useEffect处理答案后的延迟跳转，确保正确清理定时器
+  // sprint 模式下：进入反馈时冻结倒计时，离开反馈时恢复
   useEffect(() => {
     if (selectedOption === null) return;
+
+    // 进入反馈：sprint 模式暂停倒计时
+    if (mode === 'sprint') setTimerFrozen(true);
 
     timerRef.current = setTimeout(() => {
       if (currentIndex < questions.length - 1) {
@@ -101,16 +123,27 @@ export const QuizMode: React.FC<QuizModeProps> = ({
       } else {
         setIsFinished(true);
       }
-    }, 1500);
+      // 离开反馈：sprint 模式恢复倒计时
+      // 若 feedbackDelayMs = 0，setTimerFrozen(true) 与 setTimerFrozen(false) 会在同一 React 批中
+      // 被合并 → 不会触发 effect 重启 → 用微任务延迟 false，确保被 React 视为两次独立更新
+      if (mode === 'sprint') {
+        if (feedbackDelayMs === 0) {
+          queueMicrotask(() => setTimerFrozen(false));
+        } else {
+          setTimerFrozen(false);
+        }
+      }
+    }, feedbackDelayMs);
 
-    // 清理函数：组件卸载或依赖变化时清除定时器
+    // 清理函数：组件卸载或依赖变化时清除定时器；同时解除冻结避免状态卡死
     return () => {
       if (timerRef.current) {
         clearTimeout(timerRef.current);
         timerRef.current = null;
       }
+      if (mode === 'sprint') setTimerFrozen(false);
     };
-  }, [selectedOption, currentIndex, questions.length]);
+  }, [selectedOption, currentIndex, questions.length, feedbackDelayMs, mode]);
 
   // 进入结束状态时通知上层（仅触发一次）
   const finishedNotifiedRef = useRef(false);
@@ -214,8 +247,22 @@ export const QuizMode: React.FC<QuizModeProps> = ({
         </span>
         <div className="flex items-center gap-2">
           {mode === 'sprint' && (
-            <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${timeLeft <= 10 ? 'bg-rose-100 text-rose-600 animate-pulse' : 'bg-rose-50 text-rose-600'}`}>
-              ⏱ {timeLeft}s
+            <span
+              className={[
+                'text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1',
+                timerFrozen
+                  ? 'bg-indigo-100 text-indigo-700'
+                  : timeLeft <= 10
+                  ? 'bg-rose-100 text-rose-600 animate-pulse'
+                  : 'bg-rose-50 text-rose-600',
+              ].join(' ')}
+              title={timerFrozen ? '反馈展示中，倒计时已暂停' : '剩余时间'}
+            >
+              {timerFrozen ? (
+                <>❄ {timeLeft}s</>
+              ) : (
+                <>⏱ {timeLeft}s</>
+              )}
             </span>
           )}
           <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-full">

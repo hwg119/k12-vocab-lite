@@ -174,6 +174,8 @@ export interface Settings {
   studySessionSize: number;
   /** 默认测验题数 */
   quizSize: number;
+  /** 答题后反馈显示时长（ms），用户可配置 */
+  quizFeedbackDelayMs: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -181,4 +183,5 @@ export const DEFAULT_SETTINGS: Settings = {
   flipDelayMs: 200,
   studySessionSize: 50,
   quizSize: 20,
+  quizFeedbackDelayMs: 1000,
 };

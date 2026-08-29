@@ -75,6 +75,8 @@ export default function App() {
     resetProgress,
     focusMode,
     setFocusMode,
+    quizFeedbackDelayMs,
+    setQuizFeedbackDelayMs,
   } = useStage();
 
   // 近 7 日学习摘要（用于周报柱状图）
@@ -572,6 +574,7 @@ export default function App() {
                       mode={quizMode}
                       challengeSeed={quizMode === 'challenge' ? challengeSeed : undefined}
                       onFinish={handleChallengeFinish}
+                      feedbackDelayMs={quizFeedbackDelayMs}
                     />
                   )}
                 </>
@@ -668,6 +671,8 @@ export default function App() {
                   stage={stage}
                   onGoHome={() => setView('dashboard')}
                   onAfterImport={() => setView('dashboard')}
+                  quizFeedbackDelayMs={quizFeedbackDelayMs}
+                  setQuizFeedbackDelayMs={setQuizFeedbackDelayMs}
                 />
               )}
             </div>

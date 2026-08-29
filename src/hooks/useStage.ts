@@ -71,6 +71,9 @@ export interface UseStageReturn {
   resetProgress: () => void;
   focusMode: boolean;
   setFocusMode: (v: boolean) => void;
+  /** 答题后反馈延迟（毫秒）。sprint 模式下反馈期内会冻结倒计时 */
+  quizFeedbackDelayMs: number;
+  setQuizFeedbackDelayMs: (ms: number) => void;
 }
 
 export function useStage(): UseStageReturn {
@@ -94,6 +97,10 @@ export function useStage(): UseStageReturn {
   const [focusMode, setFocusModeRaw] = useLocalStorage<boolean>(
     'vocab-focus-mode',
     false,
+  );
+  const [quizFeedbackDelayMs, setQuizFeedbackDelayMsRaw] = useLocalStorage<number>(
+    'vocab-quiz-feedback-delay-ms',
+    1000,
   );
 
   const words = useMemo<Word[]>(() => WORDS_BY_STAGE[stage], [stage]);
@@ -317,6 +324,7 @@ export function useStage(): UseStageReturn {
   }, [setMistakeIds]);
 
   const setFocusMode = useCallback((v: boolean) => setFocusModeRaw(v), [setFocusModeRaw]);
+  const setQuizFeedbackDelayMs = useCallback((ms: number) => setQuizFeedbackDelayMsRaw(ms), [setQuizFeedbackDelayMsRaw]);
 
   return {
     stage,
@@ -338,5 +346,7 @@ export function useStage(): UseStageReturn {
     resetProgress,
     focusMode,
     setFocusMode,
+    quizFeedbackDelayMs,
+    setQuizFeedbackDelayMs,
   };
 }

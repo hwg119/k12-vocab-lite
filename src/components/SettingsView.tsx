@@ -8,12 +8,24 @@ interface SettingsViewProps {
   stage: Stage;
   onGoHome: () => void;
   onAfterImport: () => void;
+  quizFeedbackDelayMs: number;
+  setQuizFeedbackDelayMs: (ms: number) => void;
 }
+
+const FEEDBACK_OPTIONS: { value: number; label: string; desc: string }[] = [
+  { value: 0, label: '立即', desc: '答完直接切下一题（最快）' },
+  { value: 500, label: '0.5 秒', desc: '快速节奏' },
+  { value: 1000, label: '1.0 秒', desc: '推荐（默认）' },
+  { value: 1500, label: '1.5 秒', desc: '可看清对错与正解' },
+  { value: 2500, label: '2.5 秒', desc: '从容校对' },
+];
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
   stage,
   onGoHome,
   onAfterImport,
+  quizFeedbackDelayMs,
+  setQuizFeedbackDelayMs,
 }) => {
   const [status, setStatus] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -96,6 +108,40 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             {status}
           </p>
         )}
+      </div>
+
+      {/* 学段说明 */}
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 mb-6">
+        <h3 className="text-lg font-bold text-slate-800 mb-1">⏱ 答题反馈时长</h3>
+        <p className="text-sm text-slate-500 mb-4">
+          测验答题后展示"对/错"反馈的停留时间。<br />
+          冲刺模式（60s）下，反馈期内会<span className="font-semibold text-indigo-600">冻结倒计时</span>，不会浪费答题时间。
+        </p>
+
+        <div className="grid grid-cols-5 gap-2 mb-3">
+          {FEEDBACK_OPTIONS.map(opt => {
+            const active = quizFeedbackDelayMs === opt.value;
+            return (
+              <button
+                key={opt.value}
+                onClick={() => setQuizFeedbackDelayMs(opt.value)}
+                className={[
+                  'py-2 rounded-lg text-sm font-medium border transition-colors',
+                  active
+                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                    : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300 hover:text-indigo-600',
+                ].join(' ')}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-xs text-slate-400">
+          当前：<span className="font-mono text-slate-700">{quizFeedbackDelayMs} ms</span>
+          {' · '}
+          {FEEDBACK_OPTIONS.find(o => o.value === quizFeedbackDelayMs)?.desc ?? '自定义'}
+        </p>
       </div>
 
       {/* 学段说明 */}
