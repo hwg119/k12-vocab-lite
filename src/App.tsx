@@ -510,20 +510,18 @@ export default function App() {
               </div>
 
               <div className="flex items-center gap-2">
-                {/* 版本号（非专注模式下显示） */}
-                {!focusMode && (
-                  <button
-                    onClick={() => setView('settings')}
-                    title="版本信息"
-                    className={`text-[10px] font-mono font-medium px-1.5 py-0.5 rounded-md transition-colors ${
-                      APP_VERSION === LATEST_VERSION
-                        ? 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'
-                        : 'text-amber-600 bg-amber-50 hover:bg-amber-100 border border-amber-200'
-                    }`}
-                  >
-                    {APP_VERSION === LATEST_VERSION ? `v${APP_VERSION}` : `v${APP_VERSION} ⚠`}
-                  </button>
-                )}
+                {/* 版本号（专注模式下也显示） */}
+                <button
+                  onClick={() => setView('settings')}
+                  title="版本信息"
+                  className={`text-[10px] font-mono font-medium px-1.5 py-0.5 rounded-md transition-colors ${
+                    APP_VERSION === LATEST_VERSION
+                      ? 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'
+                      : 'text-amber-600 bg-amber-50 hover:bg-amber-100 border border-amber-200'
+                  }`}
+                >
+                  {APP_VERSION === LATEST_VERSION ? `v${APP_VERSION}` : `v${APP_VERSION} ⚠`}
+                </button>
                 {/* 专注模式 toggle */}
                 <button
                   onClick={() => setFocusMode(!focusMode)}

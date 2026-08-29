@@ -209,7 +209,7 @@ export const SpellingMode: React.FC<SpellingModeProps> = ({
       {/* 填空区：音节分段 + 首字母提示 */}
       <div className="w-full max-w-md mb-4">
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-          <div className="flex flex-wrap justify-center items-center gap-1.5">
+          <div className="flex flex-wrap justify-center items-center gap-1">
             {wordLower.split('').map((ch, j) => {
               const isFixed = j < fixedCount;
               const fill = isFixed ? ch : picked[j - fixedCount] || '';
@@ -273,7 +273,7 @@ export const SpellingMode: React.FC<SpellingModeProps> = ({
       {/* 字母按钮区 + 控制 */}
       {result === 'idle' ? (
         <>
-          <div className="flex flex-wrap justify-center gap-2 max-w-md mb-5">
+          <div className="flex flex-wrap justify-center gap-x-1.5 gap-y-2 max-w-md mb-5">
             {buttons.map((b, i) => (
               <button
                 key={i}
