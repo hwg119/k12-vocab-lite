@@ -5,7 +5,7 @@ import { IconArrowLeft, IconArrowRight, IconCheck, IconClock, IconBookOpen, Icon
 interface StudyModeProps {
   studyQueue: Word[];
   learnedIds: Set<string>;
-  source?: 'default' | 'review' | 'mistakes' | 'unit' | 'confusion';
+  source?: 'default' | 'review' | 'mistakes' | 'unit' | 'confusion' | 'newWord';
   /** 用户提交一档反馈（know / vague / unknown）
    *  - know   → mastered
    *  - vague  → mistake+

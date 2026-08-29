@@ -82,6 +82,7 @@ export default function App() {
     todayInitialDue,
     todayReviewed,
     todayHasActivity,
+    todayNewLearned,
   } = useStage();
 
   // 近 7 日学习摘要（用于周报柱状图）
@@ -180,7 +181,7 @@ export default function App() {
   }, [goBackView]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [studyQueue, setStudyQueue] = useState<Word[]>([]);
-  const [studySource, setStudySource] = useState<'default' | 'review' | 'mistakes' | 'unit' | 'confusion'>('default');
+  const [studySource, setStudySource] = useState<'default' | 'review' | 'mistakes' | 'unit' | 'confusion' | 'newWord'>('default');
   const [quizQuestions, setQuizQuestions] = useState<ReturnType<typeof generateQuiz>>([]);
   const [quizMode, setQuizMode] = useState<'daily' | 'sprint' | 'challenge'>('daily');
   // 测验重启计数器——作为 QuizMode 的 key，强制重新挂载
@@ -224,7 +225,7 @@ export default function App() {
     const session = sample(fresh, sessionSize);
     if (session.length === 0) return;
     setStudyQueue(session);
-    setStudySource('unit'); // 用 unit 来源，让 StudyMode 走完回首页
+    setStudySource('newWord'); // 学完新词后回首页
     setView('study');
   }, [words, learnedIds]);
 
@@ -490,6 +491,8 @@ export default function App() {
                   todayInitialDue={todayInitialDue}
                   todayReviewed={todayReviewed}
                   todayHasActivity={todayHasActivity}
+                  todayNewLearned={todayNewLearned}
+                  accuracy={summary.accuracy}
                   onStartStudy={startStudy}
                   onStartNewWord={startNewWord}
                   onStartQuiz={openQuizEntry}

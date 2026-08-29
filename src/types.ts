@@ -94,6 +94,8 @@ export interface StudyDayRecord {
   correctCount: number;
   /** 当天累计答题数 */
   totalCount: number;
+  /** 当天累计新学词数（首次标记为已掌握的词） */
+  newLearnedCount?: number;
 }
 
 /** 勋章成就定义 */

@@ -33,6 +33,10 @@ interface DashboardProps {
   todayReviewed: number;
   /** 今日是否有学习活动 */
   todayHasActivity: boolean;
+  /** 今日新学词数 */
+  todayNewLearned: number;
+  /** 整体正确率 0~1 */
+  accuracy: number;
   onStartStudy: () => void;
   /** 仅学新词（从未学过的） */
   onStartNewWord: () => void;
@@ -99,6 +103,98 @@ const NO_TASK_COPY = [
   '没有待复习的词，可以放松一下',
 ];
 
+/** 「开始学习」按钮 - 无新词时的文案（温和 + 酷炫合并） */
+const NO_NEW_WORD_COPY = [
+  // 温和风
+  '词库已经吃透，你是真的猛',
+  '恭喜，新词已全部拿下',
+  '今日已无新词，给自己鼓个掌',
+  '新词清空！是时候出门炫耀了',
+  // 酷炫风
+  '词库已清空 · 你就是这片大陆的哥伦布 🏆',
+  '恭喜封顶 · 新词在你面前瑟瑟发抖 👑',
+  '新手村毕业 · 词库为你加冕 🪄',
+  '一键拉满 · 词海尽在你手 🌊',
+];
+
+/** 「开始学习」按钮 - 首次学新词（温和 + 酷炫合并） */
+const NEW_START_COPY = [
+  // 温和风
+  '今天还没学新词，开始就对了',
+  '新词正在排队，开始吧',
+  '新词海等你启航',
+  '学新词就像呼吸，越多越自然',
+  // 酷炫风
+  '火力未启 · 你的神经突触正在待命 ⚡',
+  '新词列队候场 · 按下开始就能开火 🔥',
+  '空白卷子已铺开 · 等你落下第一笔 ✍️',
+  '词典在喊你 · 第一发新词请求出战 🎯',
+];
+
+/** 「开始学习」按钮 - 学了新词后的激励（按数量分档） */
+const NEW_PROGRESS_COPY: Record<string, string[]> = {
+  /** 1-19 个 */
+  low: [
+    // 温和风
+    '刚热身，再多学几个',
+    '已经开了个好头',
+    '稳扎稳打，再来几个',
+    '词汇量刚起步，继续',
+    // 酷炫风
+    '第一滴血流出来了 · 不停 💉',
+    '引擎刚点火 · 推背感在路上 🏎️',
+    '小刀开刃 · 词库被你刮了一刀 🗡️',
+    '刚刚热身 · 真正的战役还没开始 🚩',
+  ],
+  /** 20-49 个 */
+  mid: [
+    // 温和风
+    '学了不少了，节奏对了',
+    '词汇量稳步增长中',
+    '大脑正在解锁新词库',
+    '保持节奏，今天的小目标快了',
+    // 酷炫风
+    '一波带走 · 节奏比 DJ 还稳 🎧',
+    '手感炸裂 · 别停，继续输出 ⚡',
+    '今天的词库被你打成马蜂窝 🕸️',
+    '速度已破表 · 大脑在燃烧 🔥',
+  ],
+  /** 50-99 个 */
+  high: [
+    // 温和风
+    '学神是你吗？节奏很顶',
+    '今日新词爆炸中',
+    '今天的词汇量已经超平均水平',
+    '多巴胺疯狂分泌，继续',
+    // 酷炫风
+    '核弹级效率 · 今日份的词汇量已爆表 💥',
+    '封神进度条 · 请勿打扰 🚫',
+    '你这一发下去 · 词典今天亏大了 📉',
+    '高端局玩家 · 新词见你直接投降 🏳️',
+  ],
+  /** 100+ 个 */
+  pro: [
+    // 温和风
+    '你今天开挂了，词汇量暴增',
+    '今日战绩 +100，新词见你绕着走',
+    '今日已经学霸级，继续刷？',
+    '建议把状态截图保存，超神了',
+    // 酷炫风
+    '今日开挂 · 词库被你打到系统崩溃 💀',
+    '战绩 +100 · 你这手速我追不上 🚀',
+    '今日已杀疯 · 建议把屏幕镶起来 🖼️',
+    '燃烧吧小宇宙 · 这战绩得截图留念 🌌',
+  ],
+};
+
+/** 根据今日新学数选对应档位的文案池 */
+function pickNewProgressPool(n: number): string[] {
+  if (n >= 100) return NEW_PROGRESS_COPY.pro;
+  if (n >= 50) return NEW_PROGRESS_COPY.high;
+  if (n >= 20) return NEW_PROGRESS_COPY.mid;
+  return NEW_PROGRESS_COPY.low;
+}
+
 export const Dashboard: React.FC<DashboardProps> = ({
   words,
   learnedIds,
@@ -114,6 +210,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   todayInitialDue,
   todayReviewed,
   todayHasActivity,
+  todayNewLearned,
+  accuracy,
   onStartStudy,
   onStartNewWord,
   onStartQuiz,
@@ -146,6 +244,20 @@ export const Dashboard: React.FC<DashboardProps> = ({
     const d = new Date();
     return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
   }, []);
+
+  // ---- 「开始学习」按钮文案 ----
+  // 三种状态：
+  //   a) 没有新词 → NO_NEW_WORD_COPY
+  //   b) 有新词 + 今日还没学 → NEW_START_COPY
+  //   c) 有新词 + 已经学了 N 个 → pickNewProgressCopy(N) 中选一条
+  // 文案混合了温和风与酷炫风，每次进入首页随机选一条
+  const accuracyPct = Math.round(accuracy * 100);
+  const pickRandom = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+  const newWordCopy = (() => {
+    if (newWordCount === 0) return pickRandom(NO_NEW_WORD_COPY);
+    if (todayNewLearned === 0) return pickRandom(NEW_START_COPY);
+    return pickRandom(pickNewProgressPool(todayNewLearned));
+  })();
 
   // 根据状态选文案
   const reviewCopy = (() => {
@@ -186,23 +298,42 @@ export const Dashboard: React.FC<DashboardProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* 左侧 */}
         <div className="lg:col-span-1 space-y-4">
-          {/* 已掌握按钮 */}
+          {/* 已掌握按钮 - 饼图版 */}
           <button
             onClick={onViewLearned}
             className="w-full rounded-2xl p-5 text-left transition-all duration-200 border bg-emerald-50 border-emerald-200 hover:bg-emerald-100 hover:shadow-md hover:-translate-y-0.5"
           >
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-3">
+              {/* 饼图 */}
+              <div className="relative w-16 h-16 shrink-0">
+                <svg width="64" height="64" viewBox="0 0 36 36" className="-rotate-90">
+                  <circle
+                    cx="18" cy="18" r="15.9155"
+                    fill="none"
+                    stroke="#a7f3d0"
+                    strokeWidth="3.5"
+                  />
+                  <circle
+                    cx="18" cy="18" r="15.9155"
+                    fill="none"
+                    stroke="#059669"
+                    strokeWidth="3.5"
+                    strokeDasharray={`${progress} 100`}
+                    strokeLinecap="round"
+                    style={{ transition: 'stroke-dasharray 1s ease-out' }}
+                  />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-xs font-bold text-emerald-700">{progress}%</span>
+                </div>
+              </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs uppercase tracking-wider text-emerald-600">已掌握</p>
-                <div className="flex items-baseline gap-2 mt-1">
+                <div className="flex items-baseline gap-1.5 mt-1">
                   <span className="text-2xl font-bold text-slate-800">{learned}</span>
                   <span className="text-sm text-slate-400">/ {total}</span>
-                  <span className="text-sm font-bold text-emerald-600 ml-1">{progress}%</span>
                 </div>
                 <p className="text-xs mt-1.5 text-emerald-500">查看全部 →</p>
-              </div>
-              <div className="w-12 h-12 rounded-full bg-emerald-200 flex items-center justify-center shrink-0 ml-3">
-                <IconCheck className="w-6 h-6 text-emerald-700" />
               </div>
             </div>
             {/* 今日已学习数 */}
@@ -226,14 +357,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
           >
             <div className="flex items-center justify-between">
               <div className="flex-1 min-w-0">
-                <p className={`text-xs uppercase tracking-wider ${newWordCount > 0 ? 'text-indigo-600' : 'text-slate-400'}`}>
+                <p className={`text-xs uppercase tracking-wider font-semibold ${newWordCount > 0 ? 'text-indigo-700' : 'text-slate-400'}`}>
                   开始学习
                 </p>
-                <p className={`text-2xl font-bold mt-1 ${newWordCount > 0 ? 'text-slate-800' : 'text-slate-400'}`}>
+                <p className={`text-2xl font-bold mt-1 ${newWordCount > 0 ? 'text-indigo-900' : 'text-slate-400'}`}>
                   {newWordCount > 0 ? `${newWordCount} 个新词` : '已学完全部'}
                 </p>
-                <p className={`text-xs mt-1.5 ${newWordCount > 0 ? 'text-indigo-500' : 'text-slate-400'}`}>
-                  {newWordCount > 0 ? '学点新词 →' : '恭喜通关'}
+                <p className={`text-sm mt-1.5 leading-snug font-medium ${newWordCount > 0 ? 'text-indigo-700' : 'text-slate-400'}`}>
+                  {newWordCopy}
                 </p>
               </div>
               <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ml-3 ${
@@ -242,6 +373,22 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <IconBook className={`w-6 h-6 ${newWordCount > 0 ? 'text-indigo-700' : 'text-slate-400'}`} />
               </div>
             </div>
+            {/* 底部：今日新学数 + 正确率（激励数据） */}
+            {todayNewLearned > 0 && newWordCount > 0 && (
+              <div className="mt-3 pt-3 border-t border-indigo-100 flex items-center justify-between text-xs">
+                <div className="flex items-center gap-3">
+                  <span className="text-indigo-700">
+                    今日新学 <span className="font-bold text-indigo-900">{todayNewLearned}</span> 词
+                  </span>
+                  {accuracyPct > 0 && (
+                    <span className="text-indigo-700">
+                      正确率 <span className="font-bold text-indigo-900">{accuracyPct}%</span>
+                    </span>
+                  )}
+                </div>
+                <span className="text-indigo-600 font-semibold">继续 →</span>
+              </div>
+            )}
           </button>
 
           {/* 今日复习 - SRS 复习进度（仅 todayInitialDue > 0 时显示） */}

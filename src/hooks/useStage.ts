@@ -83,6 +83,8 @@ export interface UseStageReturn {
   todayReviewed: number;
   /** 今日是否有学习活动（studyDays 今日记录 studyCount > 0） */
   todayHasActivity: boolean;
+  /** 今日新学词数（每天自动归零） */
+  todayNewLearned: number;
 }
 
 export function useStage(): UseStageReturn {
@@ -114,6 +116,11 @@ export function useStage(): UseStageReturn {
   // 今日待复习数快照：{ date: 当天0点, count: 初始dueCount }
   const [todaySnapshot, setTodaySnapshot] = useLocalStorage<{ date: number; count: number }>(
     'vocab-today-due-snapshot',
+    { date: 0, count: 0 },
+  );
+  // 今日新学数：{ date: 当天0点, count: 当日累计新学词数 }
+  const [todayNewSnapshot, setTodayNewSnapshot] = useLocalStorage<{ date: number; count: number }>(
+    'vocab-today-new-snapshot',
     { date: 0, count: 0 },
   );
 
@@ -241,6 +248,8 @@ export function useStage(): UseStageReturn {
   // 今日复习进度
   const todayInitialDue = todaySnapshot.date === todayKey ? todaySnapshot.count : summary.dueCount;
   const todayReviewed = Math.max(0, todayInitialDue - summary.dueCount);
+  // 今日新学数：跨日期自动归零
+  const todayNewLearned = todayNewSnapshot.date === todayKey ? todayNewSnapshot.count : 0;
 
   // 成就列表（动态评估）
   const achievements = useMemo<Achievement[]>(
@@ -312,6 +321,21 @@ export function useStage(): UseStageReturn {
   const submitFeedback = useCallback(
     (wordOrId: Word | string, feedback: ReviewFeedback) => {
       const { key, legacyId } = resolveKeys(wordOrId);
+      // 0. 先判断：这是不是该词首次进入 learnedIds
+      //    用于在 'know' 时计入今日新学
+      let wasLearnedBefore = false;
+      if (typeof wordOrId !== 'string') {
+        wasLearnedBefore = learnedIds.has(key) || learnedIds.has(legacyId);
+      } else {
+        // 字符串 id 路径：检查已知的 wordKey 与 id
+        const w = words.find(x => x.id === wordOrId);
+        if (w) {
+          const k = wordKey(w);
+          wasLearnedBefore = learnedIds.has(k) || learnedIds.has(wordOrId);
+        } else {
+          wasLearnedBefore = learnedIds.has(key);
+        }
+      }
       // 1. 更新 SRS 状态（同时写 key + 旧 id 双映射）
       setSrsMap(prev => {
         const cur = prev[key] ?? prev[legacyId] ?? createInitialSrs();
@@ -327,6 +351,14 @@ export function useStage(): UseStageReturn {
           if (legacyId && legacyId !== key) s.add(legacyId);
           return s;
         });
+        // 首次掌握（之前不在 learnedIds）→ 计入今日新学
+        if (!wasLearnedBefore) {
+          setTodayNewSnapshot(prev => {
+            const today = todayKey;
+            const base = prev.date === today ? prev.count : 0;
+            return { date: today, count: base + 1 };
+          });
+        }
         setMistakeIds(prev => prev.filter(x => x !== key && x !== legacyId));
       } else {
         setMistakeIds(prev => {
@@ -337,7 +369,7 @@ export function useStage(): UseStageReturn {
       // 3. 计入今日打卡
       setStudyDays(prev => recordActivity(prev, feedback, feedback === 'know'));
     },
-    [setLearnedIds, setSrsMap, setMistakeIds, setStudyDays],
+    [setLearnedIds, setSrsMap, setMistakeIds, setStudyDays, setTodayNewSnapshot, learnedIds, words, todayKey],
   );
 
   const recordQuizAnswer = useCallback(
@@ -432,5 +464,6 @@ export function useStage(): UseStageReturn {
     todayInitialDue,
     todayReviewed,
     todayHasActivity,
+    todayNewLearned,
   };
 }
