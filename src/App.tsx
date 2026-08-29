@@ -503,6 +503,10 @@ export default function App() {
                   onGoHome={() => {
                     if (studySource === 'confusion') {
                       setView('confusions');
+                    } else if (studySource === 'unit') {
+                      setView('units');
+                    } else if (studySource === 'mistakes') {
+                      setView('mistakes');
                     } else {
                       setView('dashboard');
                     }

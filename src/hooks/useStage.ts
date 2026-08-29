@@ -143,8 +143,12 @@ export function useStage(): UseStageReturn {
       changed = true;
     }
     const newLearned = Array.from(learnedIds).map(migrate);
-    const newLearnedSet = new Set(newLearned);
-    if (newLearnedSet.size !== learnedIds.size || [...newLearnedSet].some(k => !learnedIds.has(k))) {
+    // 同时保留旧 id 和迁移后的 wordKey，避免 UnitsView（按 wordId 计数）看不到
+    const newLearnedSet = new Set<string>([...Array.from(learnedIds), ...newLearned]);
+    if (
+      newLearnedSet.size !== learnedIds.size ||
+      [...newLearnedSet].some(k => !learnedIds.has(k))
+    ) {
       setLearnedIds(newLearnedSet);
       changed = true;
     }
@@ -228,8 +232,8 @@ export function useStage(): UseStageReturn {
       setLearnedIds(prev => {
         const s = new Set(prev);
         s.add(key);
-        // 兼容旧数据：旧 id 也在 set 中则一并保留以便迁移
-        if (legacyId && legacyId !== key && s.has(legacyId)) s.add(legacyId);
+        // 同步加 legacyId，避免 UnitsView（按 wordId 匹配）错过该词
+        if (legacyId && legacyId !== key) s.add(legacyId);
         return s;
       });
       setSrsMap(prev => {

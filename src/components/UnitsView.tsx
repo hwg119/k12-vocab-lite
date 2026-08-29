@@ -2,6 +2,7 @@ import React from 'react';
 import { Word, StudyUnit } from '../types';
 import { STAGE_META } from '../data';
 import { getStageColors } from '../utils/colors';
+import { wordKey } from '../utils';
 import { IconArrowLeft, IconLock, IconTrophy } from './Icons';
 
 interface UnitsViewProps {
@@ -80,7 +81,12 @@ export const UnitsView: React.FC<UnitsViewProps> = ({
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
           {units.map(unit => {
-            const learnedInUnit = unit.wordIds.filter(id => learnedIds.has(id)).length;
+            // learnedIds 同时使用 wordId（legacy）和 wordKey 作 key；计数时两者都算
+            const learnedInUnit = unit.wordIds.filter(id => {
+              if (learnedIds.has(id)) return true;
+              const w = wordsById.get(id);
+              return w ? learnedIds.has(wordKey(w)) : false;
+            }).length;
             const progress = unit.wordIds.length === 0 ? 0 : learnedInUnit / unit.wordIds.length;
             const isCurrent = unit.index === firstOngoing;
 

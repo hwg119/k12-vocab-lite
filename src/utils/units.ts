@@ -1,5 +1,6 @@
 import { Word, StudyUnit, Stage } from '../types';
 import { STAGE_META } from '../data';
+import { wordKey } from './wordKey';
 
 /**
  * 闯关单元（关卡）核心算法
@@ -7,8 +8,8 @@ import { STAGE_META } from '../data';
  * 规则：
  *   - 按 difficulty 升序，再按 id 字典序排列（确定性输出）
  *   - 按 unitSize 切分（每个 stage 在 STAGE_META 中定义）
- *   - 第 0 关始终解锁；从第 1 关起必须"前一关 100% 完成"才解锁
- *     （严格阈值：必须掌握前一关全部单词才能进入下一关，避免"默认前几关都解锁"）
+ *   - 默认解锁前 DEFAULT_UNLOCK_COUNT 关（含第 0 关），让用户先把样本词过一遍
+ *   - 后续关卡必须"前一关 100% 完成"才解锁（必须掌握前一关全部单词）
  */
 
 export interface UnitsPlan {
@@ -22,6 +23,8 @@ export interface UnitsPlan {
 }
 
 const UNLOCK_THRESHOLD = 1.0;
+/** 默认解锁的前 N 关（0-based index 0..N-1 都视为常开） */
+const DEFAULT_UNLOCK_COUNT = 4;
 
 export function planUnitsForStage(
   stage: Stage,
@@ -43,7 +46,13 @@ export function planUnitsForStage(
 
   const units: StudyUnit[] = chunks.map((chunk, index) => {
     const wordIds = chunk.map(w => w.id);
-    const learnedInChunk = wordIds.filter(id => learnedIds.has(id)).length;
+    const wordByKey = new Map(chunks.flat().map(w => [w.id, w]));
+    // learnedIds 同时使用 wordId 和 wordKey；两种都查
+    const learnedInChunk = wordIds.filter(id => {
+      if (learnedIds.has(id)) return true;
+      const w = wordByKey.get(id);
+      return w ? learnedIds.has(wordKey(w)) : false;
+    }).length;
     const completed = learnedInChunk === wordIds.length && wordIds.length > 0;
     return {
       index,
@@ -54,17 +63,22 @@ export function planUnitsForStage(
     };
   });
 
-  // 计算解锁：第一关默认解锁；后续关卡必须前一关 100% 完成才解锁
-  let prevComplete = true; // 首关起始默认解锁
+  // 计算解锁：前 DEFAULT_UNLOCK_COUNT 关默认解锁；后续关卡必须前一关 100% 完成才解锁
+  // prevUnitComplete 表示"序号小于当前 u 的最后一关是否达到解锁阈值"，用于链式判断
+  const wordById = new Map<string, Word>();
+  for (const w of words) wordById.set(w.id, w);
+  let prevUnitComplete = true; // 序号 < DEFAULT_UNLOCK_COUNT 的关默认视为前置已通关
   for (const u of units) {
-    if (u.index === 0) {
+    if (u.index < DEFAULT_UNLOCK_COUNT) {
+      // 前 N 关默认常开
       u.unlocked = true;
     } else {
-      u.unlocked = prevComplete;
+      u.unlocked = prevUnitComplete;
     }
-    prevComplete =
+    // 更新 prevUnitComplete：当前关是否完成（或已完成的比例）
+    prevUnitComplete =
       u.completed ||
-      (prevComplete && learnedRatio(u.wordIds, learnedIds) >= UNLOCK_THRESHOLD);
+      learnedRatio(u.wordIds, learnedIds, wordById) >= UNLOCK_THRESHOLD;
   }
 
   const currentIndex = units.findIndex(u => !u.completed);
@@ -78,10 +92,17 @@ export function planUnitsForStage(
   };
 }
 
-function learnedRatio(ids: string[], learned: Set<string>): number {
+function learnedRatio(ids: string[], learned: Set<string>, wordById: Map<string, Word>): number {
   if (ids.length === 0) return 1;
   let n = 0;
-  for (const id of ids) if (learned.has(id)) n += 1;
+  for (const id of ids) {
+    if (learned.has(id)) {
+      n += 1;
+      continue;
+    }
+    const w = wordById.get(id);
+    if (w && learned.has(wordKey(w))) n += 1;
+  }
   return n / ids.length;
 }
 
