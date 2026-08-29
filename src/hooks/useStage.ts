@@ -109,9 +109,11 @@ export function useStage(): UseStageReturn {
     StorageKeys.studyDays,
     [],
   );
+  // 专注模式：手机端（窄屏）默认开启沉浸式学习，桌面端默认关闭，用户可手动切换
+  const defaultFocusMode = typeof window === 'undefined' ? true : window.innerWidth < 768;
   const [focusMode, setFocusModeRaw] = useLocalStorage<boolean>(
     'vocab-focus-mode',
-    false,
+    defaultFocusMode,
   );
   const [quizFeedbackDelayMs, setQuizFeedbackDelayMsRaw] = useLocalStorage<number>(
     'vocab-quiz-feedback-delay-ms',

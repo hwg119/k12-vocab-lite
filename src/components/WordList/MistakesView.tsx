@@ -176,7 +176,7 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
               onClick={() => onStartSpelling(reviewableQueue)}
               className="mt-3 w-full py-2.5 bg-rose-600 text-white font-semibold rounded-lg hover:bg-rose-700 shadow-lg shadow-rose-200 transition-all duration-200"
             >
-              ✍️ 拼写默写训练（看中文 · 拼出英文）
+              ✍️ 拼写训练（看中文 · 按音节点选字母）
             </button>
           </div>
 

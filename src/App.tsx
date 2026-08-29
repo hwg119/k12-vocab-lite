@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
 import { Word, AppView } from './types';
 import { STAGE_META } from './data';
 import {
@@ -368,6 +368,29 @@ export default function App() {
     // 跳回首页时清空返回栈（用户语义上"重新开始"）
     if (view === 'dashboard') {
       viewHistoryRef.current = [];
+    }
+  }, [view]);
+
+  // 首页滚动位置记忆：进入子页置顶，返回首页还原上一次滚动位置
+  // 根容器 min-h-screen 不封顶、内容多时页面整体变高，真正滚动者是 window
+  const homeScrollRef = useRef(0);
+  const viewRef = useRef(view);
+  useEffect(() => {
+    viewRef.current = view;
+  }, [view]);
+  useEffect(() => {
+    const onWinScroll = () => {
+      if (viewRef.current === 'dashboard') homeScrollRef.current = window.scrollY;
+    };
+    window.addEventListener('scroll', onWinScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onWinScroll);
+  }, []);
+  // 在绘制前同步定位，配合 behavior:'instant' 让用户感知不到滚动过程
+  useLayoutEffect(() => {
+    if (view === 'dashboard') {
+      window.scrollTo({ top: homeScrollRef.current, left: 0, behavior: 'instant' });
+    } else {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
     }
   }, [view]);
 

@@ -1,6 +1,7 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef, Fragment } from 'react';
 import { Word, ReviewFeedback } from '../../types';
 import { IconArrowLeft, IconCheck, IconX } from '../Icons';
+import { splitSyllables } from '../../utils/syllables';
 
 interface SpellingModeProps {
   studyQueue: Word[];
@@ -12,9 +13,12 @@ interface SpellingModeProps {
 }
 
 /**
- * 拼写默写模式（易错词主动回忆）
+ * 拼写默写模式（易错词主动回忆·点选式）
  *
- * 与学习模式相反：展示中文释义 + 音标 → 用户主动输入英文拼写，
+ * 保留"主动回忆"记忆强度但降低门槛：
+ * - 展示中文释义 + 音标，首字母（短词给 1 个、长词给 2 个）自动提示
+ * - 词按音节分段展示，作为视觉脚手架
+ * - 不弹键盘，从屏幕字母按钮按顺序点选填补，可撤销
  * 拼写正确 = know（推进连续答对/毕业），拼写错误 = unknown（重置）。
  */
 export const SpellingMode: React.FC<SpellingModeProps> = ({
@@ -24,10 +28,11 @@ export const SpellingMode: React.FC<SpellingModeProps> = ({
   onGoHome,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [input, setInput] = useState('');
-  // 'idle' | 'correct' | 'failed'
+  // 用户按顺序点选填入的字母（对应首字母之后的位置）
+  const [picked, setPicked] = useState<string[]>([]);
+  // 已被点击的按钮下标
+  const [usedIds, setUsedIds] = useState<number[]>([]);
   const [result, setResult] = useState<'idle' | 'correct' | 'failed'>('idle');
-  const inputRef = useRef<HTMLInputElement>(null);
 
   const [graduateToast, setGraduateToast] = useState<{ english: string } | null>(null);
   const lastNoticeKeyRef = useRef<number>(0);
@@ -43,33 +48,86 @@ export const SpellingMode: React.FC<SpellingModeProps> = ({
   const currentWord = studyQueue[currentIndex];
   const progress = studyQueue.length > 0 ? ((currentIndex + 1) / studyQueue.length) * 100 : 0;
 
-  /** 归一化：转小写、去首尾空格，忽略大小写与首尾标点差异 */
-  const normalize = useCallback((s: string) => s.trim().toLowerCase(), []);
+  const wordLower = (currentWord?.english ?? '').toLowerCase().replace(/[^a-z]/g, '');
+  // 首字母提示：短词 1 个，长词 2 个
+  const fixedCount = wordLower.length <= 4 ? 1 : 2;
+  const remaining = wordLower.slice(fixedCount);
+  // 每字符所属音节段（用于填空区的分段提示）
+  const segOf: number[] = useMemo(() => {
+    const s = splitSyllables(currentWord?.english ?? '');
+    const map: number[] = [];
+    s.forEach((seg, si) => {
+      for (let k = 0; k < seg.length; k++) map.push(si);
+    });
+    return map;
+  }, [currentWord]);
+
+  // 字母按钮区：目标字母打乱 + 少量干扰字母（增强再认）
+  const buttons = useMemo(() => {
+    const arr: { char: string }[] = [];
+    for (const c of remaining) arr.push({ char: c });
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    const present = new Set(remaining.split(''));
+    const alpha = 'abcdefghijklmnopqrstuvwxyz';
+    const want = wordLower.length <= 5 ? 1 : 2;
+    let guard = 0;
+    while (arr.length - remaining.length < want && guard++ < 60 && arr.length < 16) {
+      const cand = alpha[Math.floor(Math.random() * 26)];
+      if (!present.has(cand)) {
+        arr.push({ char: cand });
+        present.add(cand);
+      }
+    }
+    return arr;
+  }, [wordLower, remaining]);
+
+  const reset = useCallback(() => {
+    setPicked([]);
+    setUsedIds([]);
+    setResult('idle');
+  }, []);
 
   const advance = useCallback(() => {
-    setInput('');
-    setResult('idle');
     if (currentIndex < studyQueue.length - 1) {
       setCurrentIndex(prev => prev + 1);
     } else {
       onGoHome();
+      return;
     }
-    inputRef.current?.focus();
-  }, [currentIndex, studyQueue.length, onGoHome]);
+    reset();
+  }, [currentIndex, studyQueue.length, onGoHome, reset]);
+
+  // 切换单词时重置
+  useEffect(() => {
+    reset();
+  }, [currentIndex, reset]);
+
+  const pick = useCallback(
+    (i: number) => {
+      if (result !== 'idle' || usedIds.includes(i)) return;
+      setPicked(prev => [...prev, buttons[i].char]);
+      setUsedIds(prev => [...prev, i]);
+    },
+    [result, usedIds, buttons]
+  );
+
+  const undo = useCallback(() => {
+    if (result !== 'idle' || !usedIds.length) return;
+    setPicked(prev => prev.slice(0, -1));
+    setUsedIds(prev => prev.slice(0, -1));
+  }, [result, usedIds]);
+
+  const canCheck = remaining.length > 0 && picked.length === remaining.length;
 
   const check = useCallback(() => {
-    if (!currentWord || result !== 'idle') return;
-    const ok = normalize(input) === normalize(currentWord.english);
+    if (!currentWord || !canCheck || result !== 'idle') return;
+    const ok = picked.join('') === remaining;
     setResult(ok ? 'correct' : 'failed');
     onSubmit(currentWord.id, ok ? 'know' : 'unknown');
-    // 短暂停留让用户看到判定结果，再进入下一个
-    setTimeout(() => advance(), ok ? 1100 : 1600);
-  }, [currentWord, input, result, normalize, onSubmit, advance]);
-
-  // 未挂载时聚焦输入框
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, [currentIndex]);
+  }, [currentWord, picked, canCheck, result, remaining, onSubmit]);
 
   if (!currentWord) {
     return (
@@ -127,17 +185,19 @@ export const SpellingMode: React.FC<SpellingModeProps> = ({
             {currentIndex + 1} / {studyQueue.length}
           </span>
         </div>
-        <p className="text-xs text-rose-500 font-medium text-center mt-1">拼写默写 · 看中文拼出英文</p>
+        <p className="text-xs text-rose-500 font-medium text-center mt-1">
+          拼写训练 · 按音节点选字母（首字母已给出）
+        </p>
       </div>
 
       {/* 卡片：中文 + 音标 */}
       <div
-        className={`bg-white rounded-2xl shadow-sm border transition-colors mb-6 w-full max-w-md ${
+        className={`bg-white rounded-2xl shadow-sm border transition-colors mb-5 w-full max-w-md ${
           isCorrect ? 'border-emerald-300' : isFailed ? 'border-rose-300' : 'border-slate-200'
         }`}
       >
-        <div className="p-8 text-center">
-          <div className="text-2xl font-bold text-slate-800 leading-relaxed break-words">
+        <div className="p-7 text-center">
+          <div className="text-2xl font-bold text-slate-800 leading-relaxed break-words whitespace-pre-wrap">
             {currentWord.chinese}
           </div>
           {currentWord.phonetic && (
@@ -146,41 +206,55 @@ export const SpellingMode: React.FC<SpellingModeProps> = ({
         </div>
       </div>
 
-      {/* 输入区 */}
-      <div className="w-full max-w-md">
-        <input
-          ref={inputRef}
-          type="text"
-          autoCapitalize="none"
-          autoCorrect="off"
-          spellCheck={false}
-          className="w-full px-4 py-3 rounded-xl bg-slate-50 border text-lg text-center font-semibold outline-none focus:bg-white focus:ring-2 transition-all "
-          placeholder="输入英文拼写…"
-          value={input}
-          disabled={result !== 'idle'}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={e => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              check();
-            }
-          }}
-        />
-
-        {/* 判定反馈 */}
-        <div className="mt-3 min-h-[52px]">
-          {result === 'correct' && (
-            <div className="flex items-center justify-center gap-2 text-emerald-600 font-semibold animate-fade-in">
-              <IconCheck className="w-5 h-5" /> 拼写正确！
-            </div>
-          )}
-          {result === 'failed' && (
-            <div className="flex items-center justify-center gap-2 text-rose-600 font-semibold animate-fade-in">
-              <IconX className="w-5 h-5" />
-              正确拼写：<span className="font-bold">{currentWord.english}</span>
-            </div>
+      {/* 填空区：音节分段 + 首字母提示 */}
+      <div className="w-full max-w-md mb-4">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+          <div className="flex flex-wrap justify-center items-center gap-1.5">
+            {wordLower.split('').map((ch, j) => {
+              const isFixed = j < fixedCount;
+              const fill = isFixed ? ch : picked[j - fixedCount] || '';
+              const segStart = j > 0 && segOf[j] !== segOf[j - 1];
+              return (
+                <Fragment key={j}>
+                  {segStart && (
+                    <div className="w-3 text-slate-300 text-xl font-light self-center">|</div>
+                  )}
+                  <div
+                    className={`min-w-7 h-11 px-0.5 flex items-center justify-center rounded-lg border-b-4 text-xl font-bold ${
+                      isFixed
+                        ? 'bg-indigo-50 border-indigo-400 text-indigo-600'
+                        : fill
+                          ? 'bg-white border-slate-300 text-slate-800 '
+                          : 'border-dashed border-slate-300 text-transparent'
+                    }`}
+                  >
+                    {fill || '·'}
+                  </div>
+                </Fragment>
+              );
+            })}
+          </div>
+          {result === 'idle' && (
+            <p className="mt-3 text-center text-xs text-slate-400">
+              从下方点选字母补全，点错可用 <span className="font-medium">撤销</span> 重排
+            </p>
           )}
         </div>
+      </div>
+
+      {/* 判定反馈 */}
+      <div className="w-full max-w-md min-h-[52px]">
+        {isCorrect && (
+          <div className="flex items-center justify-center gap-2 text-emerald-600 font-semibold animate-fade-in">
+            <IconCheck className="w-5 h-5" /> 拼写正确！
+          </div>
+        )}
+        {isFailed && (
+          <div className="flex items-center justify-center gap-2 text-rose-600 font-semibold animate-fade-in">
+            <IconX className="w-5 h-5" />
+            正确拼写：<span className="font-bold">{currentWord.english}</span>
+          </div>
+        )}
 
         {result !== 'idle' && (
           <div className="mt-2 mb-3 bg-slate-50 rounded-xl p-4 animate-fade-in">
@@ -194,21 +268,64 @@ export const SpellingMode: React.FC<SpellingModeProps> = ({
             )}
           </div>
         )}
-
-        {result === 'idle' ? (
-          <button
-            onClick={check}
-            disabled={!input.trim()}
-            className={`w-full py-3 rounded-xl font-semibold bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all duration-200 ${
-              !input.trim() ? 'opacity-40 cursor-not-allowed' : ''
-            }`}
-          >
-            核对拼写
-          </button>
-        ) : (
-          <div className="text-center text-sm text-slate-400 py-3">即将进入下一个…</div>
-        )}
       </div>
+
+      {/* 字母按钮区 + 控制 */}
+      {result === 'idle' ? (
+        <>
+          <div className="flex flex-wrap justify-center gap-2 max-w-md mb-5">
+            {buttons.map((b, i) => (
+              <button
+                key={i}
+                onClick={() => pick(i)}
+                disabled={usedIds.includes(i)}
+                className={`w-9 h-11 rounded-xl text-xl font-bold border transition-all duration-150 ${
+                  usedIds.includes(i)
+                    ? 'bg-slate-50 border-slate-100 text-slate-300 cursor-default scale-90'
+                    : 'bg-white border-slate-300 text-slate-700 shadow-sm hover:bg-indigo-50 hover:border-indigo-300 hover:text-indigo-600 active:scale-95'
+                }`}
+              >
+                {b.char}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex gap-3 w-full max-w-md">
+            <button
+              onClick={undo}
+              disabled={!usedIds.length}
+              className={`px-4 py-3 rounded-xl font-semibold border transition-all duration-200 ${
+                !usedIds.length
+                  ? 'border-slate-200 text-slate-300 cursor-not-allowed'
+                  : 'border-slate-300 text-slate-600 hover:border-indigo-300 hover:text-indigo-600'
+              }`}
+            >
+              ← 撤销
+            </button>
+            <button
+              onClick={check}
+              disabled={!canCheck}
+              className={`flex-1 py-3 rounded-xl font-semibold transition-all duration-200 ${
+                canCheck
+                  ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-200'
+                  : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+              }`}
+            >
+              核对拼写{!canCheck && remaining.length > 0 && `（还差 ${remaining.length - picked.length} 个字母）`}
+            </button>
+          </div>
+        </>
+      ) : (
+        <div className="w-full max-w-md mt-1">
+          <button
+            onClick={advance}
+            className="w-full py-3 rounded-xl font-semibold bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all duration-200"
+          >
+            {currentIndex < studyQueue.length - 1 ? '下一个' : '查看结果'}
+          </button>
+          <p className="text-center text-xs text-slate-400 mt-2">可停留查看例句与助记</p>
+        </div>
+      )}
     </div>
   );
 };
