@@ -243,7 +243,7 @@ npx cap run android         # 直连真机/模拟器安装并启动
 
 # 4. 直接产出 release APK（命令行）
 cd android
-.\gradlew assembleRelease   # 产物：android/app/build/outputs/apk/release/app-release.apk
+.\gradlew assembleRelease   # 产物：android/app/build/outputs/apk/release/k12-release.apk
 ```
 
 ---

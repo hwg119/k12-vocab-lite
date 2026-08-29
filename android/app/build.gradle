@@ -39,6 +39,14 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+    // 自定义 APK 输出文件名：app-release.apk → k12-release.apk
+    android.applicationVariants.all { variant ->
+        if (variant.buildType.name == 'release') {
+            variant.outputs.all { output ->
+                output.outputFileName = 'k12-release.apk'
+            }
+        }
+    }
 }
 
 repositories {
