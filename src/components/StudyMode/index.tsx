@@ -5,7 +5,7 @@ import { IconArrowLeft, IconArrowRight, IconCheck, IconClock, IconBookOpen, Icon
 interface StudyModeProps {
   studyQueue: Word[];
   learnedIds: Set<string>;
-  source?: 'default' | 'review' | 'mistakes' | 'unit';
+  source?: 'default' | 'review' | 'mistakes' | 'unit' | 'confusion';
   /** 用户提交一档反馈（know / vague / unknown）
    *  - know   → mastered
    *  - vague  → mistake+
@@ -44,6 +44,8 @@ export const StudyMode: React.FC<StudyModeProps> = ({
       setIsFlipped(false);
       setTimeout(() => setCurrentIndex(prev => prev + 1), 150);
     } else {
+      // 完成学习 → onGoHome
+      // 来源为 confusion 时由 App 决定回混淆页；其他情况回首页
       onGoHome();
     }
   }, [currentIndex, studyQueue.length, onGoHome]);
@@ -109,6 +111,9 @@ export const StudyMode: React.FC<StudyModeProps> = ({
             </div>
             {source === 'mistakes' && (
               <span className="text-xs text-rose-500 mt-0.5">专项复习</span>
+            )}
+            {source === 'confusion' && (
+              <span className="text-xs text-amber-600 mt-0.5">易混词对比</span>
             )}
           </div>
           <button

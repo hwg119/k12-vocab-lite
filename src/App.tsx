@@ -181,7 +181,7 @@ export default function App() {
   }, [goBackView]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [studyQueue, setStudyQueue] = useState<Word[]>([]);
-  const [studySource, setStudySource] = useState<'default' | 'review' | 'mistakes' | 'unit'>('default');
+  const [studySource, setStudySource] = useState<'default' | 'review' | 'mistakes' | 'unit' | 'confusion'>('default');
   const [quizQuestions, setQuizQuestions] = useState<ReturnType<typeof generateQuiz>>([]);
   const [quizMode, setQuizMode] = useState<'daily' | 'sprint' | 'challenge'>('daily');
   // 挑战模式相关 state
@@ -500,7 +500,13 @@ export default function App() {
                     const w = words.find(x => x.id === id);
                     submitFeedback(w ?? id, fb);
                   }}
-                  onGoHome={() => setView('dashboard')}
+                  onGoHome={() => {
+                    if (studySource === 'confusion') {
+                      setView('confusions');
+                    } else {
+                      setView('dashboard');
+                    }
+                  }}
                 />
               )}
 
@@ -641,7 +647,7 @@ export default function App() {
                   onGoHome={() => setView('dashboard')}
                   onStartPair={(queue) => {
                     setStudyQueue(queue);
-                    setStudySource('unit');
+                    setStudySource('confusion');
                     setView('study');
                   }}
                 />

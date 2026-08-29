@@ -9,6 +9,8 @@ export {
   isPartSpeech,
   wordKey,
   matchWordKey,
+  highlightDiff,
+  pairDiffPositions,
   shuffleArray,
   sample,
   chunk,

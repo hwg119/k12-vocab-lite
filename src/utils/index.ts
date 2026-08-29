@@ -1,5 +1,7 @@
 export { parseVocabulary, generateStableId, isPhonetic, hasChinese, isPartSpeech } from './parser';
 export { wordKey, matchWordKey } from './wordKey';
+export { highlightDiff, pairDiffPositions } from './diff';
+export type { DiffChar } from './diff';
 export { shuffleArray, sample, chunk, seededRng, hashSeed } from './array';
 export { generateQuiz, calculateScore, getScoreRating } from './quiz';
 export {
