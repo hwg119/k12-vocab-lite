@@ -1,6 +1,6 @@
 # 🎓 K12 Vocab Master (K12 全学段单词大师)
 
-> **v2.0 — 二次开发完成版**  
+> **v2.0.1 — 易混词筛选增强**  
 > 一款面向 K12 全学段（小学/初中/高中）的极简英语单词记忆应用。  
 > 三学段完整词库（小学420+ / 初中1600 / 高考3817）；  
 > 纯前端、零后端、零 AI、零拼写负担；  
@@ -45,7 +45,7 @@
 
 ### 🔥 趣味辅助（不跑偏）
 - 单词助记（词根/谐音/场景联想）
-- 易混词自动配对（按 `confusionGroupId`）
+- 易混词自动配对（按 `confusionGroupId` + 编辑距离自动形近），支持字符级差异高亮，并提供多维筛选（难度区间 / 差异字符数 / 上次复习间隔）
 - 周报评语（按 streak + accuracy 自动产出）
 
 ### 🔮 专注模式
@@ -210,11 +210,9 @@ interface Word {
 
 ---
 
-## 🔄 数据迁移
+## �️ 数据存储
 
-老版本（v1.0）的 `gaokao-learned` LocalStorage key 在首次访问 v2.0 时**自动迁移**到 senior 学段（`vocab-senior-learned`），用户无感知。
-
-新版本所有学习数据按学段隔离：
+所有学习数据按学段隔离：
 
 ```
 vocab-senior-learned / -srs / -mistakes
@@ -232,15 +230,32 @@ vocab-focus-mode
 项目已集成 `@capacitor/android`，可打包为 APK：
 
 ```bash
+# 1. 构建 web 资源
 npm run build
-npx cap copy android
-npx cap open android
-# 或：npx cap run android  # 直连设备
+
+# 2. 同步到 android 工程（dist → android/app/src/main/assets/public，并刷新插件）
+npx cap sync android
+
+# 3. 用 Android Studio 打开 / 直连设备调试
+npx cap open android        # 打开 Android Studio
+# 或：
+npx cap run android         # 直连真机/模拟器安装并启动
+
+# 4. 直接产出 release APK（命令行）
+cd android
+.\gradlew assembleRelease   # 产物：android/app/build/outputs/apk/release/app-release.apk
 ```
 
 ---
 
 ## 📝 更新日志
+
+### v2.0.1 (2026-08-29) — 易混词筛选增强
+- ✨ 易混词视图新增三组筛选维度：难度区间（1-2★ / 2-3★ / 3-4★ / 4-5★）、差异字符数（1 / 2 / 3+ 处）、上次复习间隔（从未 / 本周 / 一月内 / 超过 30 天）
+- ✨ 卡片头部新增"差异处数 / 难度 ★ / 复习状态"标签，复习状态按临近遗忘程度着色（绿→黄→红→灰）
+- ✨ `ConfusionGroup` 扩展元信息字段：`diffCount` / `difficultyRange` / `daysSinceReview`，由 `groupConfusionPairs(words, { srsMap })` 计算
+- 🗑️ 移除 v1.0 → v2.0 老格式数据迁移逻辑（`gaokao-learned` 自动迁入 senior 已废弃）
+- 🔧 Android `versionName` 1.1.0 → 1.2.0（`versionCode` 2 → 3）
 
 ### v2.0.0 (2026-08-28) — 全量二次开发
 - ✨ 三学段适配（小学/初中/高中），数据完全隔离

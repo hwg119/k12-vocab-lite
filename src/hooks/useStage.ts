@@ -37,28 +37,6 @@ import {
  *   - summary：Dashboard 周报所需的整体摘要
  */
 
-const LEGACY_KEY = 'gaokao-learned';
-
-function migrateLegacyIfNeeded(): void {
-  if (typeof window === 'undefined') return;
-  try {
-    const flagKey = '__k12_vocab_migrated_v1__';
-    if (window.localStorage.getItem(flagKey)) return;
-
-    const old = window.localStorage.getItem(LEGACY_KEY);
-    if (old) {
-      const seniorKey = StorageKeys.learnedIds('senior');
-      const arr = JSON.parse(old);
-      if (Array.isArray(arr) && arr.length > 0 && !window.localStorage.getItem(seniorKey)) {
-        window.localStorage.setItem(seniorKey, old);
-      }
-    }
-    window.localStorage.setItem(flagKey, '1');
-  } catch {
-    // 静默
-  }
-}
-
 export interface UseStageReturn {
   stage: Stage;
   setStage: (s: Stage) => void;
@@ -96,8 +74,6 @@ export interface UseStageReturn {
 }
 
 export function useStage(): UseStageReturn {
-  migrateLegacyIfNeeded();
-
   const [stage, setStageRaw] = useLocalStorage<Stage>(StorageKeys.currentStage, 'senior');
   const [learnedIds, setLearnedIds] = useLocalStorage<Set<string>>(
     StorageKeys.learnedIds(stage),
