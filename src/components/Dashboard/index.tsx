@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Word, Stage } from '../../types';
 import { STAGE_META } from '../../data';
 import { getStageColors } from '../../utils/colors';
@@ -25,6 +25,12 @@ interface DashboardProps {
   streak: number;
   confusionCount: number;
   stage: Stage;
+  /** 今日初始待复习数（每天首次打开时快照） */
+  todayInitialDue: number;
+  /** 今日已复习数 */
+  todayReviewed: number;
+  /** 今日是否有学习活动 */
+  todayHasActivity: boolean;
   onStartStudy: () => void;
   onStartQuiz: () => void;
   onViewUnits: () => void;
@@ -37,6 +43,57 @@ interface DashboardProps {
   onResetProgress: () => void;
 }
 
+// ---- 今日复习文案引擎 ----
+
+/** 从数组中根据 seed 取一个稳定的文案（同一页面不闪烁） */
+const pick = (arr: string[], seed: number) => arr[seed % arr.length];
+
+/** 开始前的引导文案 */
+const START_COPY = [
+  '今天有 {n} 个词在等你翻牌',
+  '{n} 个词排着队要复习，来吧',
+  '大脑今天的保养额度：{n} 个词',
+  '有 {n} 个词需要巩固，开始吧',
+  '{n} 个词待复习，挑战一下',
+];
+
+/** 进行中的鼓励文案 */
+const PROGRESS_COPY = [
+  '已完成 {done}/{total}，你的大脑正在升级',
+  '{done}/{total} 已拿下，继续冲',
+  '词汇量 +{done}，大脑没生锈',
+  '过半了！{done}/{total}，稳',
+  '{done}/{total}，进度条在涨',
+];
+
+/** 收尾冲刺文案 */
+const FINISHING_COPY = [
+  '就差 {left} 个了，别松劲',
+  '{left} 个词：胜利就在眼前',
+  '最后 {left} 个，冲刺！',
+  '{left} 个，马上搞定！',
+  '收尾 {left} 个，一口气端了它们',
+];
+
+/** 完成后的庆祝文案（酷炫风） */
+const DONE_COPY = [
+  '今日保底已达成，大脑未生锈！',
+  '全部搞定！你的词汇量又涨了',
+  '今日复习完成，记忆已加固',
+  '搞定！今天的你比昨天更强',
+  '复习完毕，大脑已充能',
+  '全部通关！去干点别的吧',
+  '今天的记忆维护已完成，大脑在线',
+  '搞定，大脑今日份的营养已摄入',
+];
+
+/** 无任务时的文案 */
+const NO_TASK_COPY = [
+  '今天没有到期词，去学点新的吧',
+  '暂无复习任务，词库很安全',
+  '没有待复习的词，可以放松一下',
+];
+
 export const Dashboard: React.FC<DashboardProps> = ({
   words,
   learnedIds,
@@ -48,6 +105,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
   streak,
   confusionCount,
   stage,
+  todayInitialDue,
+  todayReviewed,
+  todayHasActivity,
   onStartStudy,
   onStartQuiz,
   onViewUnits,
@@ -70,6 +130,45 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const ringCircum = 2 * Math.PI * ringRadius;
   const ringOffset = ringCircum * (1 - progress / 100);
   const ringColor = `rgb(${colors.ring})`;
+
+  // ---- 今日复习卡片状态计算 ----
+  const todayDone = todayInitialDue > 0;
+  const reviewDone = todayDone && dueCount === 0 && todayHasActivity;
+  const reviewProgress = todayInitialDue > 0
+    ? Math.min(1, todayReviewed / todayInitialDue)
+    : 0;
+  const remainingLeft = dueCount;
+
+  // 稳定文案 seed：基于日期，同一天内文案不变
+  const copySeed = useMemo(() => {
+    const d = new Date();
+    return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+  }, []);
+
+  // 根据状态选文案
+  const reviewCopy = (() => {
+    if (dueCount === 0 && !todayHasActivity) {
+      return pick(NO_TASK_COPY, copySeed);
+    }
+    if (reviewDone) {
+      return pick(DONE_COPY, copySeed + 1);
+    }
+    // dueCount=0 但 todayInitialDue=0（今天没待复习的词，但做了其他练习）也视为完成
+    if (dueCount === 0 && todayHasActivity) {
+      return pick(DONE_COPY, copySeed + 5);
+    }
+    if (todayReviewed > 0 && reviewProgress >= 0.8) {
+      return pick(FINISHING_COPY, copySeed + 2)
+        .replace('{left}', String(remainingLeft));
+    }
+    if (todayReviewed > 0) {
+      return pick(PROGRESS_COPY, copySeed + 3)
+        .replace('{done}', String(todayReviewed))
+        .replace('{total}', String(todayInitialDue));
+    }
+    return pick(START_COPY, copySeed + 4)
+      .replace('{n}', String(dueCount));
+  })();
 
   return (
     <div className="w-full max-w-4xl mx-auto animate-fade-in">
@@ -115,32 +214,74 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
           </div>
 
-          {/* 今日待复习 */}
+          {/* 今日复习 - 动态文案版 */}
           <button
             onClick={onStartStudy}
-            disabled={dueCount === 0}
-            className={`w-full rounded-2xl p-5 text-left transition-all duration-200 border ${
-              dueCount > 0
+            disabled={dueCount === 0 && !reviewDone}
+            className={`w-full rounded-2xl p-5 text-left transition-all duration-200 border overflow-hidden relative ${
+              reviewDone
+                ? 'bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-200 hover:shadow-md'
+                : dueCount > 0
                 ? `bg-amber-50 ${colors.border} hover:shadow-md hover:-translate-y-0.5`
                 : 'bg-slate-50 border-slate-100 opacity-60 cursor-not-allowed'
             }`}
           >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className={`text-xs uppercase tracking-wider ${dueCount > 0 ? colors.textMuted : 'text-slate-400'}`}>
-                  今日待复习
+            {/* 完成态庆祝动画 */}
+            {reviewDone && (
+              <div className="absolute inset-0 pointer-events-none">
+                <div className="celebrate-particle absolute top-2 left-[15%] text-lg" style={{ animationDelay: '0s' }}>✨</div>
+                <div className="celebrate-particle absolute top-1 left-[55%] text-base" style={{ animationDelay: '0.3s' }}>🎉</div>
+                <div className="celebrate-particle absolute top-3 right-[20%] text-sm" style={{ animationDelay: '0.6s' }}>⭐</div>
+                <div className="celebrate-particle absolute bottom-2 left-[35%] text-xs" style={{ animationDelay: '0.9s' }}>🌟</div>
+              </div>
+            )}
+            <div className="flex items-center justify-between relative z-10">
+              <div className="flex-1 min-w-0">
+                <p className={`text-xs uppercase tracking-wider ${
+                  reviewDone ? 'text-emerald-600' : dueCount > 0 ? colors.textMuted : 'text-slate-400'
+                }`}>
+                  {reviewDone ? '今日复习' : '今日待复习'}
                 </p>
-                <p className={`text-3xl font-bold mt-1 ${dueCount > 0 ? 'text-amber-700' : 'text-slate-400'}`}>
-                  {dueCount}
-                </p>
-                <p className={`text-xs mt-1 ${dueCount > 0 ? 'text-amber-500' : 'text-slate-400'}`}>
-                  {dueCount > 0 ? '点击开始复习' : '暂无到期词'}
+                {/* 数字行：已复习 / 待复习 */}
+                <div className={`text-2xl font-bold mt-1 ${
+                  reviewDone ? 'text-emerald-700' : dueCount > 0 ? 'text-slate-800' : 'text-slate-400'
+                }`}>
+                  {todayInitialDue > 0 ? (
+                    <>
+                      <span className={reviewDone ? 'text-emerald-600' : 'text-emerald-600'}>{todayReviewed}</span>
+                      <span className="text-slate-300 mx-1">/</span>
+                      <span>{todayInitialDue}</span>
+                    </>
+                  ) : (
+                    <span>{dueCount}</span>
+                  )}
+                </div>
+                {/* 进度条 */}
+                {todayReviewed > 0 && !reviewDone && (
+                  <div className="mt-2 mb-1">
+                    <div className="w-full bg-white/60 rounded-full h-1.5">
+                      <div
+                        className="bg-amber-500 h-1.5 rounded-full transition-all duration-700 ease-out"
+                        style={{ width: `${Math.round(reviewProgress * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+                {/* 动态文案 */}
+                <p className={`text-xs mt-1.5 leading-snug ${
+                  reviewDone ? 'text-emerald-600 font-medium' : dueCount > 0 ? 'text-amber-500' : 'text-slate-400'
+                }`}>
+                  {reviewCopy}
                 </p>
               </div>
-              <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                dueCount > 0 ? 'bg-amber-200' : 'bg-slate-200'
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ml-3 ${
+                reviewDone ? 'bg-emerald-200' : dueCount > 0 ? 'bg-amber-200' : 'bg-slate-200'
               }`}>
-                <IconBook className={`w-6 h-6 ${dueCount > 0 ? 'text-amber-700' : 'text-slate-400'}`} />
+                {reviewDone ? (
+                  <IconCheck className="w-6 h-6 text-emerald-700" />
+                ) : (
+                  <IconBook className={`w-6 h-6 ${dueCount > 0 ? 'text-amber-700' : 'text-slate-400'}`} />
+                )}
               </div>
             </div>
           </button>

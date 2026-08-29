@@ -14,7 +14,6 @@ import { WORDS_BY_STAGE, ALL_WORDS } from '../data';
 import {
   createInitialSrs,
   applyReview,
-  selectDueWords,
   planUnitsForStage,
   evaluateAchievements,
   computeStreak,
@@ -76,6 +75,12 @@ export interface UseStageReturn {
   setQuizFeedbackDelayMs: (ms: number) => void;
   lookupSrs: (wordOrId: Word | string) => SrsState | undefined;
   isLearned: (wordOrId: Word | string) => boolean;
+  /** 今日初始待复习数（每天首次打开时快照，用于计算复习进度） */
+  todayInitialDue: number;
+  /** 今日已复习数（初始 - 当前剩余） */
+  todayReviewed: number;
+  /** 今日是否有学习活动（studyDays 今日记录 studyCount > 0） */
+  todayHasActivity: boolean;
 }
 
 export function useStage(): UseStageReturn {
@@ -104,8 +109,25 @@ export function useStage(): UseStageReturn {
     'vocab-quiz-feedback-delay-ms',
     1000,
   );
+  // 今日待复习数快照：{ date: 当天0点, count: 初始dueCount }
+  const [todaySnapshot, setTodaySnapshot] = useLocalStorage<{ date: number; count: number }>(
+    'vocab-today-due-snapshot',
+    { date: 0, count: 0 },
+  );
 
   const words = useMemo<Word[]>(() => WORDS_BY_STAGE[stage], [stage]);
+
+  // --- 今日快照逻辑 ---
+  const todayKey = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
+  }, []);
+  // 今天是否有学习活动
+  const todayHasActivity = useMemo(() => {
+    const rec = studyDays.find(r => r.date === todayKey);
+    return !!rec && rec.studyCount > 0;
+  }, [studyDays, todayKey]);
 
   // 一次性迁移：把旧格式 id（裸 id）转成 wordKey
   // 触发条件：mistakeIds/learnedIds 里有不以 'w:' 或 'id:' 开头的项
@@ -172,7 +194,15 @@ export function useStage(): UseStageReturn {
     const totalAnswered = sumAnswered(studyDays);
     const totalCorrect = sumCorrect(studyDays);
     const accuracy = totalAnswered === 0 ? 0 : totalCorrect / totalAnswered;
-    const dueCount = selectDueWords(words, srsMap, words.length).length;
+    // dueCount = 学过且到期的词（需复习），不含从未学过的新词和未到期的词
+    const now = Date.now();
+    let dueCount = 0;
+    for (const w of words) {
+      const key = wordKey(w);
+      const state = srsMap[key] ?? srsMap[w.id];
+      // 只统计有 SRS 记录且 dueAt 到期的词
+      if (state && (state.dueAt === 0 || state.dueAt <= now)) dueCount++;
+    }
     return {
       learnedCount,
       totalInStage: words.length,
@@ -187,6 +217,21 @@ export function useStage(): UseStageReturn {
       longestStreak: streak.longest,
     };
   }, [learnedIds, words, srsMap, mistakeIds, studyDays, units, streak]);
+
+  // 今日快照：首次有 dueCount 且快照日期不是今天时，记录初始值
+  useEffect(() => {
+    if (summary.dueCount > 0 && todaySnapshot.date !== todayKey) {
+      setTodaySnapshot({ date: todayKey, count: summary.dueCount });
+    }
+    // 快照值异常（>= 总词数，旧 bug 残留）时自动重置
+    if (todaySnapshot.date === todayKey && todaySnapshot.count >= words.length) {
+      setTodaySnapshot({ date: todayKey, count: summary.dueCount });
+    }
+  }, [summary.dueCount, todayKey, todaySnapshot.date, todaySnapshot.count, words.length, setTodaySnapshot]);
+
+  // 今日复习进度
+  const todayInitialDue = todaySnapshot.date === todayKey ? todaySnapshot.count : summary.dueCount;
+  const todayReviewed = Math.max(0, todayInitialDue - summary.dueCount);
 
   // 成就列表（动态评估）
   const achievements = useMemo<Achievement[]>(
@@ -375,5 +420,8 @@ export function useStage(): UseStageReturn {
     setQuizFeedbackDelayMs,
     lookupSrs,
     isLearned,
+    todayInitialDue,
+    todayReviewed,
+    todayHasActivity,
   };
 }

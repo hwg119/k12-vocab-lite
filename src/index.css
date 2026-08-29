@@ -114,9 +114,21 @@
   background: #94a3b8;
 }
 
-/* 选中文字样式 */
+/* 选择中文字样式 */
 ::selection {
   @apply bg-indigo-100 text-indigo-900;
+}
+
+/* 完成庆祝粒子动画 */
+@keyframes celebrate-float {
+  0% { opacity: 0; transform: translateY(10px) scale(0.5); }
+  20% { opacity: 1; transform: translateY(0) scale(1); }
+  80% { opacity: 1; transform: translateY(-15px) scale(1.1); }
+  100% { opacity: 0; transform: translateY(-25px) scale(0.8); }
+}
+.celebrate-particle {
+  animation: celebrate-float 2.5s ease-out infinite;
+  will-change: transform, opacity;
 }
 
 /* 减少动画偏好支持 */

@@ -77,6 +77,9 @@ export default function App() {
     setFocusMode,
     quizFeedbackDelayMs,
     setQuizFeedbackDelayMs,
+    todayInitialDue,
+    todayReviewed,
+    todayHasActivity,
   } = useStage();
 
   // 近 7 日学习摘要（用于周报柱状图）
@@ -468,6 +471,9 @@ export default function App() {
                   streak={streak.current}
                   confusionCount={confusionCount}
                   stage={stage}
+                  todayInitialDue={todayInitialDue}
+                  todayReviewed={todayReviewed}
+                  todayHasActivity={todayHasActivity}
                   onStartStudy={startStudy}
                   onStartQuiz={openQuizEntry}
                   onViewUnits={() => setView('units')}
