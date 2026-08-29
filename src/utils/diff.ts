@@ -27,40 +27,89 @@ function onlyLetters(w: string): string {
 }
 
 /**
+ * 找所有词的"最长公共后缀"长度。
+ * 例：['aboard', 'beard', 'board'] → 3（"ard"）
+ */
+function commonSuffixLen(words: string[]): number {
+  if (words.length === 0) return 0;
+  const minLen = Math.min(...words.map(w => w.length));
+  for (let len = minLen; len > 0; len--) {
+    const suffix = words[0].slice(-len);
+    if (words.every(w => w.slice(-len) === suffix)) return len;
+  }
+  return 0;
+}
+
+/**
+ * 找所有词的"最长公共前缀"长度。
+ * 例：['prefix_a', 'prefix_b'] → 7（"prefix_"）
+ */
+function commonPrefixLen(words: string[]): number {
+  if (words.length === 0) return 0;
+  const minLen = Math.min(...words.map(w => w.length));
+  for (let len = minLen; len > 0; len--) {
+    const prefix = words[0].slice(0, len);
+    if (words.every(w => w.slice(0, len) === prefix)) return len;
+  }
+  return 0;
+}
+
+/**
  * 标记每个词的"差异字符位置"
  *
- * 设计：先按"位置"找差异（适合单替换：adapt vs adopt）。
- * 长度不同时（quite vs quiet），短的词末尾按"插入"标记差异。
+ * 设计：先找所有词的公共前缀/后缀，确认"无差异"区段；
+ * 然后对中间区段按位置做差异对齐。
+ * 这能解决 aboard / beard / board 这种
+ * "末尾 3 字母相同、前缀各异" 的全词高亮问题。
  */
 export function highlightDiff(englishWords: string[]): DiffChar[][] {
   const words = englishWords.map(onlyLetters);
   if (words.length === 0) return [];
-  if (words.length === 1) return [words[0].split('').map((ch, pos) => ({ ch, pos, diff: false }))];
+  if (words.length === 1) {
+    return [words[0].split('').map((ch, pos) => ({ ch, pos, diff: false }))];
+  }
 
-  const maxLen = Math.max(...words.map(w => w.length));
+  // 步骤 1：先确定"公共前后缀"（跨所有词都相同的连续字符）
+  const prefixLen = commonPrefixLen(words);
+  const suffixLen = commonSuffixLen(words);
 
-  // 步骤 1：对每个位置 i，统计该位置上唯一字符集合
-  // 任意两个词在该位置的字符不同 → 差异位
+  // 步骤 2：找出"中间区段"的差异位置（仅对齐中间非公共部分）
+  // 中间区段范围：[prefixLen, len - suffixLen)
+  // 如果中间区段在某一位置上字符与其它任一词的中间不一致 → 差异位
   const diffPositions = new Set<number>();
-  for (let pos = 0; pos < maxLen; pos++) {
-    const seenAtPos = new Set<string>();
+
+  // 中间区段做"按位置"差异比对（处理 "adapt vs adopt" 这种替换）
+  const midStart = prefixLen;
+  const maxLen = Math.max(...words.map(w => w.length));
+  const midEnd = maxLen - suffixLen;
+
+  for (let pos = midStart; pos < midEnd; pos++) {
+    const seen = new Set<string>();
     let hasGap = false;
     for (const w of words) {
-      const ch = w[pos]; // undefined 表示该词到此位置已结束（短词）
-      seenAtPos.add(ch ?? '');
+      // 只算"中间区段"内的字符；超出该词中间区段的按 gap 处理
+      const wMidEnd = w.length - suffixLen;
+      const ch = (pos < w.length && pos < wMidEnd) ? w[pos] : undefined;
+      seen.add(ch ?? '');
       if (ch === undefined) hasGap = true;
     }
-    // 如果该位置上有不同字符、或有词缺失 → 算差异
-    if (seenAtPos.size > 1 || hasGap) {
+    if (seen.size > 1 || hasGap) {
       diffPositions.add(pos);
     }
   }
 
-  // 步骤 2：对每个词，渲染成字符列表，差异位标记
+  // 步骤 3：渲染每个词
   return words.map(w => {
     const out: DiffChar[] = [];
     for (let pos = 0; pos < w.length; pos++) {
-      out.push({ ch: w[pos], pos, diff: diffPositions.has(pos) });
+      // 公共前缀/后缀内的字符 → NOT diff
+      const inPrefix = pos < prefixLen;
+      const inSuffix = pos >= w.length - suffixLen;
+      out.push({
+        ch: w[pos],
+        pos,
+        diff: !inPrefix && !inSuffix && diffPositions.has(pos),
+      });
     }
     return out;
   });
