@@ -164,7 +164,7 @@ export const StudyMode: React.FC<StudyModeProps> = ({
           <div className={`w-12 h-px bg-slate-200 mb-8 transition-all duration-300 ${isFlipped ? 'opacity-100' : 'opacity-0'}`}></div>
 
           <div className={`transition-all duration-300 ${isFlipped ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-            <p className="text-xl text-slate-700 leading-relaxed">
+            <p className="text-xl text-slate-700 leading-relaxed break-words whitespace-pre-wrap">
               {currentWord.chinese}
             </p>
             {currentWord.mnemonic && (

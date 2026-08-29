@@ -31,6 +31,7 @@ import {
   ConfusionView,
   SettingsView,
   LearnedView,
+  TodayReviewedView,
   ErrorBoundary,
 } from './components';
 import {
@@ -81,6 +82,7 @@ export default function App() {
     setQuizFeedbackDelayMs,
     todayInitialDue,
     todayReviewed,
+    todayReviewedIds,
     todayHasActivity,
     todayNewLearned,
   } = useStage();
@@ -526,6 +528,7 @@ export default function App() {
                   todayNewLearned={todayNewLearned}
                   accuracy={summary.accuracy}
                   onStartStudy={startStudy}
+                  onViewTodayReviewed={() => setView('todayReviewed')}
                   onStartNewWord={startNewWord}
                   onStartQuiz={openQuizEntry}
                   onViewUnits={() => setView('units')}
@@ -685,8 +688,21 @@ export default function App() {
                   learnedIds={learnedIds}
                   srsMap={srsMap}
                   onGoHome={() => setView('dashboard')}
+                  onMarkLearned={markLearned}
                   onUnmarkLearned={unmarkLearned}
                   dataVersion={learnedDataVersion}
+                />
+              )}
+
+              {view === 'todayReviewed' && (
+                <TodayReviewedView
+                  words={words}
+                  reviewedIds={todayReviewedIds}
+                  learnedIds={learnedIds}
+                  srsMap={srsMap}
+                  onGoHome={() => setView('dashboard')}
+                  onMarkLearned={markLearned}
+                  onUnmarkLearned={unmarkLearned}
                 />
               )}
 

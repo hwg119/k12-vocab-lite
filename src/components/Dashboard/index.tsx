@@ -38,6 +38,8 @@ interface DashboardProps {
   /** 整体正确率 0~1 */
   accuracy: number;
   onStartStudy: () => void;
+  /** 查看今日已复习列表 */
+  onViewTodayReviewed: () => void;
   /** 仅学新词（从未学过的） */
   onStartNewWord: () => void;
   onStartQuiz: () => void;
@@ -213,6 +215,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   todayNewLearned,
   accuracy,
   onStartStudy,
+  onViewTodayReviewed,
   onStartNewWord,
   onStartQuiz,
   onViewUnits,
@@ -394,11 +397,17 @@ export const Dashboard: React.FC<DashboardProps> = ({
           {/* 今日复习 - SRS 复习进度（仅 todayInitialDue > 0 时显示） */}
           {todayInitialDue > 0 && (
           <button
-            onClick={onStartStudy}
-            disabled={reviewDone}
+            onClick={() => {
+              if (reviewDone) {
+                onViewTodayReviewed();
+              } else {
+                onStartStudy();
+              }
+            }}
+            disabled={dueCount === 0 && !todayHasActivity}
             className={`w-full rounded-2xl p-5 text-left transition-all duration-200 border overflow-hidden relative ${
               reviewDone
-                ? 'bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-200 hover:shadow-md'
+                ? 'bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-200 hover:shadow-md hover:-translate-y-0.5 cursor-pointer'
                 : dueCount > 0
                 ? `bg-amber-50 ${colors.border} hover:shadow-md hover:-translate-y-0.5`
                 : 'bg-slate-50 border-slate-100 opacity-60 cursor-not-allowed'

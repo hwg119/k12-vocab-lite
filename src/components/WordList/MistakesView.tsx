@@ -193,7 +193,7 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
                     <span className="font-bold text-slate-800">{word.english}</span>
                     <span className="text-xs text-indigo-500 font-mono">{word.phonetic}</span>
                   </div>
-                  <p className="text-sm text-slate-500 mt-1 line-clamp-1">{word.chinese}</p>
+                  <p className="text-sm text-slate-500 mt-1 break-words leading-relaxed">{word.chinese}</p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0 ml-3">
                   <span className="inline-flex items-center justify-center min-w-[28px] h-7 px-2 text-xs font-mono text-rose-600 bg-rose-50 rounded-full border border-rose-100">

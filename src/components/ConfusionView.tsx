@@ -373,7 +373,7 @@ const CompareCard: React.FC<{
               <span className="text-xs text-indigo-500 font-mono">{w.phonetic}</span>
             </div>
             {/* 中文 */}
-            <p className="text-sm text-slate-600 mt-1 leading-relaxed">{w.chinese}</p>
+            <p className="text-sm text-slate-600 mt-1 leading-relaxed break-words">{w.chinese}</p>
           </div>
         ))}
       </div>

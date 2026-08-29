@@ -56,7 +56,8 @@ export type AppView =
   | 'stats'
   | 'confusions'
   | 'settings'
-  | 'challengeInput';
+  | 'challengeInput'
+  | 'todayReviewed';
 
 export interface QuizQuestion {
   word: Word;

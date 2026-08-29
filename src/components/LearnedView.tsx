@@ -13,6 +13,8 @@ interface LearnedViewProps {
   learnedIds: Set<string>;
   srsMap: Record<string, SrsState>;
   onGoHome: () => void;
+  /** 标记为"已掌握" */
+  onMarkLearned: (wordOrId: Word | string) => void;
   /** 取消"已掌握"标记 */
   onUnmarkLearned: (wordOrId: Word | string) => void;
   /**
@@ -106,6 +108,7 @@ export const LearnedView: React.FC<LearnedViewProps> = ({
   learnedIds,
   srsMap,
   onGoHome,
+  onMarkLearned,
   onUnmarkLearned,
   dataVersion,
 }) => {
@@ -316,6 +319,16 @@ export const LearnedView: React.FC<LearnedViewProps> = ({
               key={it.word.id}
               item={it}
               isLearnedNow={overrideLearned.has(wordKey(it.word))}
+              onMark={(w) => {
+                onMarkLearned(w);
+                const k = wordKey(w);
+                setOverrideLearned(prev => {
+                  const next = new Set(prev);
+                  next.add(k);
+                  if (w.id && w.id !== k) next.add(w.id);
+                  return next;
+                });
+              }}
               onUnmark={(w) => {
                 onUnmarkLearned(w);
                 const k = wordKey(w);
@@ -446,10 +459,12 @@ const LearnedRow = memo(
   ({
     item,
     isLearnedNow,
+    onMark,
     onUnmark,
   }: {
     item: LearnedItem;
     isLearnedNow: boolean;
+    onMark: (w: Word) => void;
     onUnmark: (w: Word) => void;
   }) => {
     const { word, firstMasteredAt, lastReviewedAt, status } = item;
@@ -494,11 +509,9 @@ const LearnedRow = memo(
           ) : (
             <>
               <button
-                onClick={() => {
-                  /* 已取消状态点击无动作，如需重新标记请进入「完整词典」 */
-                }}
-                className="w-9 h-9 sm:w-10 sm:h-10 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center"
-                title="已取消"
+                onClick={() => onMark(word)}
+                className="w-9 h-9 sm:w-10 sm:h-10 bg-slate-200 text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 active:scale-90 rounded-full flex items-center justify-center transition-all border border-slate-300"
+                title="标记已掌握"
               >
                 <IconCheck />
               </button>

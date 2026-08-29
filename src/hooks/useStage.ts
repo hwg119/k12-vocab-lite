@@ -81,6 +81,8 @@ export interface UseStageReturn {
   todayInitialDue: number;
   /** 今日已复习数（初始 - 当前剩余） */
   todayReviewed: number;
+  /** 今日已复习的单词 ID 列表（按复习顺序） */
+  todayReviewedIds: string[];
   /** 今日是否有学习活动（studyDays 今日记录 studyCount > 0） */
   todayHasActivity: boolean;
   /** 今日新学词数（每天自动归零） */
@@ -122,6 +124,11 @@ export function useStage(): UseStageReturn {
   const [todayNewSnapshot, setTodayNewSnapshot] = useLocalStorage<{ date: number; count: number }>(
     'vocab-today-new-snapshot',
     { date: 0, count: 0 },
+  );
+  // 今日已复习单词列表：{ date: 当天0点, ids: 当日复习过的 wordKey 列表（按顺序） }
+  const [todayReviewedSnapshot, setTodayReviewedSnapshot] = useLocalStorage<{ date: number; ids: string[] }>(
+    'vocab-today-reviewed-snapshot',
+    { date: 0, ids: [] },
   );
 
   const words = useMemo<Word[]>(() => WORDS_BY_STAGE[stage], [stage]);
@@ -276,6 +283,8 @@ export function useStage(): UseStageReturn {
   const todayReviewed = Math.max(0, todayInitialDue - summary.dueCount);
   // 今日新学数：跨日期自动归零
   const todayNewLearned = todayNewSnapshot.date === todayKey ? todayNewSnapshot.count : 0;
+  // 今日已复习单词列表：跨日期自动归零
+  const todayReviewedIds = todayReviewedSnapshot.date === todayKey ? todayReviewedSnapshot.ids : [];
 
   // 成就列表（动态评估）
   const achievements = useMemo<Achievement[]>(
@@ -413,8 +422,19 @@ export function useStage(): UseStageReturn {
       }
       // 3. 计入今日打卡
       setStudyDays(prev => recordActivity(prev, feedback, feedback === 'know'));
+      // 4. 计入今日已复习列表（只记录复习模式的词，首次掌握的新词也计入）
+      setTodayReviewedSnapshot(prev => {
+        const today = todayKey;
+        if (prev.date !== today) {
+          return { date: today, ids: [key] };
+        }
+        if (prev.ids.includes(key) || prev.ids.includes(legacyId)) {
+          return prev;
+        }
+        return { date: today, ids: [...prev.ids, key] };
+      });
     },
-    [setLearnedIds, setSrsMap, setMistakeIds, setStudyDays, setTodayNewSnapshot, learnedIds, words, todayKey],
+    [setLearnedIds, setSrsMap, setMistakeIds, setStudyDays, setTodayNewSnapshot, setTodayReviewedSnapshot, learnedIds, words, todayKey],
   );
 
   const recordQuizAnswer = useCallback(
@@ -508,6 +528,7 @@ export function useStage(): UseStageReturn {
     isLearned,
     todayInitialDue,
     todayReviewed,
+    todayReviewedIds,
     todayHasActivity,
     todayNewLearned,
   };
