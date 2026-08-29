@@ -13,5 +13,6 @@ export { AchievementsView } from './AchievementsView';
 export { StatsView } from './StatsView';
 export { ConfusionView } from './ConfusionView';
 export { SettingsView } from './SettingsView';
+export { LearnedView } from './LearnedView';
 export { ErrorBoundary } from './ErrorBoundary';
 export * from './Icons';

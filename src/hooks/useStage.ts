@@ -51,6 +51,8 @@ export interface UseStageReturn {
     learnedCount: number;
     totalInStage: number;
     dueCount: number;
+    /** 从未学过的词数（learnedIds 里没有的） */
+    newWordCount: number;
     mistakeCount: number;
     totalCorrect: number;
     totalAnswered: number;
@@ -203,10 +205,17 @@ export function useStage(): UseStageReturn {
       // 只统计有 SRS 记录且 dueAt 到期的词
       if (state && (state.dueAt === 0 || state.dueAt <= now)) dueCount++;
     }
+    // newWordCount = 从未学过的词数（learnedIds 里没有的）
+    let newWordCount = 0;
+    for (const w of words) {
+      const key = wordKey(w);
+      if (!learnedIds.has(key) && !learnedIds.has(w.id)) newWordCount++;
+    }
     return {
       learnedCount,
       totalInStage: words.length,
       dueCount,
+      newWordCount,
       mistakeCount: mistakeIds.length,
       totalAnswered,
       totalCorrect,

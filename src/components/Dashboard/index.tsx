@@ -18,6 +18,8 @@ interface DashboardProps {
   words: Word[];
   learnedIds: Set<string>;
   dueCount: number;
+  /** 从未学过的词数（用于「开始学习」按钮） */
+  newWordCount: number;
   mistakeCount: number;
   unitsCompleted: number;
   unitsTotal: number;
@@ -32,12 +34,15 @@ interface DashboardProps {
   /** 今日是否有学习活动 */
   todayHasActivity: boolean;
   onStartStudy: () => void;
+  /** 仅学新词（从未学过的） */
+  onStartNewWord: () => void;
   onStartQuiz: () => void;
   onViewUnits: () => void;
   onViewMistakes: () => void;
   onViewConfusions: () => void;
   onViewAchievements: () => void;
   onViewList: () => void;
+  onViewLearned: () => void;
   onViewStats: () => void;
   onViewSettings: () => void;
   onResetProgress: () => void;
@@ -98,6 +103,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   words,
   learnedIds,
   dueCount,
+  newWordCount,
   mistakeCount,
   unitsCompleted,
   unitsTotal,
@@ -109,12 +115,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
   todayReviewed,
   todayHasActivity,
   onStartStudy,
+  onStartNewWord,
   onStartQuiz,
   onViewUnits,
   onViewMistakes,
   onViewConfusions,
   onViewAchievements,
   onViewList,
+  onViewLearned,
   onViewStats,
   onViewSettings,
   onResetProgress,
@@ -124,12 +132,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const progress = total > 0 ? Math.round((learned / total) * 100) : 0;
   const meta = STAGE_META[stage];
   const colors = getStageColors(stage);
-
-  // 圆形进度环
-  const ringRadius = 36;
-  const ringCircum = 2 * Math.PI * ringRadius;
-  const ringOffset = ringCircum * (1 - progress / 100);
-  const ringColor = `rgb(${colors.ring})`;
 
   // ---- 今日复习卡片状态计算 ----
   const todayDone = todayInitialDue > 0;
@@ -184,40 +186,69 @@ export const Dashboard: React.FC<DashboardProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* 左侧 */}
         <div className="lg:col-span-1 space-y-4">
-          {/* 掌握进度 */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-            <p className="text-slate-500 text-xs uppercase tracking-wider mb-3">已掌握</p>
-            <div className="flex items-center gap-5">
-              <svg width="92" height="92" viewBox="0 0 100 100">
-                <circle cx="50" cy="50" r={ringRadius} fill="none" stroke="#e2e8f0" strokeWidth="8" />
-                <circle
-                  cx="50"
-                  cy="50"
-                  r={ringRadius}
-                  fill="none"
-                  stroke={ringColor}
-                  strokeWidth="8"
-                  strokeLinecap="round"
-                  strokeDasharray={ringCircum}
-                  strokeDashoffset={ringOffset}
-                  transform="rotate(-90 50 50)"
-                  style={{ transition: 'stroke-dashoffset 1s ease-out' }}
-                />
-                <text x="50" y="55" textAnchor="middle" className="text-xl font-bold" fill="#1e293b">
-                  {progress}%
-                </text>
-              </svg>
-              <div>
-                <div className="text-3xl font-bold text-slate-800">{learned}</div>
-                <div className="text-sm text-slate-400">/ {total}</div>
+          {/* 已掌握按钮 */}
+          <button
+            onClick={onViewLearned}
+            className="w-full rounded-2xl p-5 text-left transition-all duration-200 border bg-emerald-50 border-emerald-200 hover:bg-emerald-100 hover:shadow-md hover:-translate-y-0.5"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs uppercase tracking-wider text-emerald-600">已掌握</p>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <span className="text-2xl font-bold text-slate-800">{learned}</span>
+                  <span className="text-sm text-slate-400">/ {total}</span>
+                  <span className="text-sm font-bold text-emerald-600 ml-1">{progress}%</span>
+                </div>
+                <p className="text-xs mt-1.5 text-emerald-500">查看全部 →</p>
+              </div>
+              <div className="w-12 h-12 rounded-full bg-emerald-200 flex items-center justify-center shrink-0 ml-3">
+                <IconCheck className="w-6 h-6 text-emerald-700" />
               </div>
             </div>
-          </div>
+            {/* 今日已学习数 */}
+            {todayReviewed > 0 && (
+              <div className="mt-3 pt-3 border-t border-emerald-100 flex items-center justify-between">
+                <span className="text-xs text-emerald-600">今日已学</span>
+                <span className="text-sm font-bold text-emerald-700">{todayReviewed} 词</span>
+              </div>
+            )}
+          </button>
 
-          {/* 今日复习 - 动态文案版 */}
+          {/* 开始学习 - 学新词 */}
+          <button
+            onClick={onStartNewWord}
+            disabled={newWordCount === 0}
+            className={`w-full rounded-2xl p-5 text-left transition-all duration-200 border ${
+              newWordCount > 0
+                ? 'bg-indigo-50 border-indigo-200 hover:bg-indigo-100 hover:shadow-md hover:-translate-y-0.5'
+                : 'bg-slate-50 border-slate-100 opacity-60 cursor-not-allowed'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex-1 min-w-0">
+                <p className={`text-xs uppercase tracking-wider ${newWordCount > 0 ? 'text-indigo-600' : 'text-slate-400'}`}>
+                  开始学习
+                </p>
+                <p className={`text-2xl font-bold mt-1 ${newWordCount > 0 ? 'text-slate-800' : 'text-slate-400'}`}>
+                  {newWordCount > 0 ? `${newWordCount} 个新词` : '已学完全部'}
+                </p>
+                <p className={`text-xs mt-1.5 ${newWordCount > 0 ? 'text-indigo-500' : 'text-slate-400'}`}>
+                  {newWordCount > 0 ? '学点新词 →' : '恭喜通关'}
+                </p>
+              </div>
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ml-3 ${
+                newWordCount > 0 ? 'bg-indigo-200' : 'bg-slate-200'
+              }`}>
+                <IconBook className={`w-6 h-6 ${newWordCount > 0 ? 'text-indigo-700' : 'text-slate-400'}`} />
+              </div>
+            </div>
+          </button>
+
+          {/* 今日复习 - SRS 复习进度（仅 todayInitialDue > 0 时显示） */}
+          {todayInitialDue > 0 && (
           <button
             onClick={onStartStudy}
-            disabled={dueCount === 0 && !reviewDone}
+            disabled={reviewDone}
             className={`w-full rounded-2xl p-5 text-left transition-all duration-200 border overflow-hidden relative ${
               reviewDone
                 ? 'bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-200 hover:shadow-md'
@@ -285,6 +316,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </div>
             </div>
           </button>
+          )}
 
           {/* 连续打卡 */}
           {streak > 0 && (

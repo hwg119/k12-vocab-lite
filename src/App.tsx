@@ -10,6 +10,7 @@ import {
   groupConfusionPairs,
   generateSeed,
   buildChallengeQuestions,
+  wordKey,
 } from './utils';
 import { useStage } from './hooks';
 import { useEdgeSwipe } from './hooks/useEdgeSwipe';
@@ -30,6 +31,7 @@ import {
   StatsView,
   ConfusionView,
   SettingsView,
+  LearnedView,
   ErrorBoundary,
 } from './components';
 import {
@@ -212,6 +214,19 @@ export default function App() {
     setStudySource('review');
     setView('study');
   }, [words, srsMap]);
+
+  // 启动学习模式 - 仅新词（从未学过的）
+  const startNewWord = useCallback(() => {
+    const fresh = words.filter(w => {
+      const key = wordKey(w);
+      return !learnedIds.has(key) && !learnedIds.has(w.id);
+    });
+    const session = sample(fresh, sessionSize);
+    if (session.length === 0) return;
+    setStudyQueue(session);
+    setStudySource('unit'); // 用 unit 来源，让 StudyMode 走完回首页
+    setView('study');
+  }, [words, learnedIds]);
 
   // 单元闯关 - 接收 units/cards 队列
   const startUnit = useCallback((queue: Word[]) => {
@@ -464,6 +479,7 @@ export default function App() {
                   words={words}
                   learnedIds={learnedIds}
                   dueCount={summary.dueCount}
+                  newWordCount={summary.newWordCount}
                   mistakeCount={mistakeIds.length}
                   unitsCompleted={summary.unitsCompleted}
                   unitsTotal={summary.unitsTotal}
@@ -475,12 +491,14 @@ export default function App() {
                   todayReviewed={todayReviewed}
                   todayHasActivity={todayHasActivity}
                   onStartStudy={startStudy}
+                  onStartNewWord={startNewWord}
                   onStartQuiz={openQuizEntry}
                   onViewUnits={() => setView('units')}
                   onViewMistakes={() => setView('mistakes')}
                   onViewConfusions={() => setView('confusions')}
                   onViewAchievements={() => setView('achievements')}
                   onViewList={() => setView('list')}
+                  onViewLearned={() => setView('learned')}
                   onViewStats={() => setView('stats')}
                   onViewSettings={() => setView('settings')}
                   onResetProgress={handleReset}
@@ -625,12 +643,11 @@ export default function App() {
               )}
 
               {view === 'learned' && (
-                <WordList
-                  words={words.filter(w => learnedIds.has(w.id))}
+                <LearnedView
+                  words={words}
                   learnedIds={learnedIds}
-                  onMarkAsLearned={markLearned}
-                  title="已掌握"
-                  showMarkButton={false}
+                  srsMap={srsMap}
+                  onGoHome={() => setView('dashboard')}
                 />
               )}
 
