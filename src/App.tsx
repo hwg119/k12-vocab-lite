@@ -298,7 +298,10 @@ export default function App() {
 
   // 切到下一个 view 时清残留队列 + 维护返回栈
   useEffect(() => {
-    if (view !== 'study') setStudyQueue([]);
+    if (view !== 'study') {
+      setStudyQueue([]);
+      setStudySource('default');
+    }
     if (view !== 'quiz') setQuizQuestions([]);
     // 维护历史栈：把「上一刻的 view」压栈
     // 但忽略任务型页面（quiz/study/challengeInput）作为"上一刻"，避免返回栈塞满
@@ -491,7 +494,7 @@ export default function App() {
                 />
               )}
 
-              {view === 'study' && studyQueue.length > 0 && (
+              {view === 'study' && (
                 <StudyMode
                   studyQueue={studyQueue}
                   learnedIds={learnedIds}
@@ -501,6 +504,8 @@ export default function App() {
                     submitFeedback(w ?? id, fb);
                   }}
                   onGoHome={() => {
+                    // 同步清队列，避免 setView 后还残留旧 studyQueue 引发的空白
+                    setStudyQueue([]);
                     if (studySource === 'confusion') {
                       setView('confusions');
                     } else if (studySource === 'unit') {
