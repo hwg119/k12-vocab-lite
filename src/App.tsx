@@ -86,6 +86,7 @@ export default function App() {
     todayReviewedIds,
     todayNewLearned,
     graduatedCount,
+    graduatedRecords,
   } = useStage();
 
   // 近 7 日学习摘要（用于周报柱状图）
@@ -813,6 +814,7 @@ export default function App() {
                   mistakeIds={mistakeIds}
                   srsMap={srsMap}
                   graduatedCount={graduatedCount}
+                  graduatedRecords={graduatedRecords}
                   onGoHome={() => setView('dashboard')}
                   onStartReview={startMistakesReview}
                   onStartSpelling={startSpelling}

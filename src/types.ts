@@ -17,6 +17,18 @@ export type Difficulty = 1 | 2 | 3 | 4 | 5;
 export type ReviewFeedback = 'know' | 'vague' | 'unknown';
 
 /**
+ * 已攻克错词记录（错词毕业时沉淀）。
+ * - english: 用于 UI 列表展示
+ * - key: wordKey，便于校验当前学段是否仍存在该词
+ * - graduatedAt: 攻克时间戳（ms）
+ */
+export interface GraduatedRecord {
+  english: string;
+  key: string;
+  graduatedAt: number;
+}
+
+/**
  * 单词核心数据
  * 原有字段：id / english / phonetic / chinese
  * 新增字段（全部可选，向后兼容）：
@@ -177,8 +189,8 @@ export const StorageKeys = {
   srs: (stage: Stage) => `vocab-${stage}-srs`,
   /** 错词 ID 列表（专项复习） */
   mistakes: (stage: Stage) => `vocab-${stage}-mistakes`,
-  /** 已攻克错词的累计计数（毕业沉淀） */
-  graduated: (stage: Stage) => `vocab-${stage}-graduated`,
+  /** 已攻克错词记录（毕业沉淀），按学段独立，用于错词本"已攻克"列表 */
+  graduatedRecords: (stage: Stage) => `vocab-${stage}-graduated-records`,
   /** 勋章成就 */
   achievements: (stage: Stage) => `vocab-${stage}-achievements`,
   /** 闯关单元 */

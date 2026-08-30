@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Word, SrsState } from '../../types';
+import { Word, SrsState, GraduatedRecord } from '../../types';
 import { matchWordKey, graduationThreshold } from '../../utils';
 import { IconArrowLeft, IconTrash } from '../Icons';
 import { WordImage } from '../WordImage';
@@ -67,12 +67,83 @@ function ProgressDots({
   );
 }
 
+/**
+ * 已攻克词条列表：与错词本条目同布局（音标 / 释义 / WordImage），右侧显示攻克时间。
+ */
+function GraduatedSection({
+  rows,
+}: {
+  rows: { rec: GraduatedRecord; word: Word | undefined }[];
+}) {
+  if (rows.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl p-12 text-center border border-slate-100">
+        <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
+          🏆
+        </div>
+        <h3 className="text-lg font-bold text-slate-800 mb-2">暂无攻克记录</h3>
+        <p className="text-slate-500 text-sm">
+          错词本里的词连续答对达标后，会自动沉淀到这里作为你的成就。
+        </p>
+      </div>
+    );
+  }
+  return (
+    <ul className="space-y-2">
+      {rows.map(({ rec, word }) => {
+        const days = Math.max(0, Math.round((Date.now() - rec.graduatedAt) / DAY));
+        const english = word?.english ?? rec.english;
+        const phonetic = word?.phonetic ?? '';
+        const chinese = word?.chinese ?? '';
+        return (
+          <li
+            key={rec.key}
+            className="bg-white rounded-xl border border-emerald-100 p-4 flex items-center justify-between hover:shadow-sm transition-shadow"
+          >
+            <div className="flex-1 min-w-0 flex items-center gap-3">
+              <div className="min-w-0">
+                <div className="flex items-baseline gap-2">
+                  <span className="font-bold text-slate-800">{english || '(未命名)'}</span>
+                  {phonetic ? (
+                    <span className="text-xs text-indigo-500 font-mono">{phonetic}</span>
+                  ) : null}
+                </div>
+                {chinese ? (
+                  <p className="text-sm text-slate-500 mt-1 break-words leading-relaxed">{chinese}</p>
+                ) : null}
+              </div>
+              {english ? (
+                <WordImage
+                  english={english}
+                  alt={english}
+                  className="w-10 h-10 rounded-lg bg-slate-100 shrink-0"
+                  zoomable={false}
+                />
+              ) : null}
+            </div>
+            <div className="flex flex-col items-end gap-1.5 shrink-0 ml-3">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium rounded-full whitespace-nowrap text-emerald-700 bg-emerald-50 border border-emerald-200">
+                🏆 已攻克
+              </span>
+              <span className="text-[10px] text-slate-400 leading-tight">
+                {days === 0 ? '今天攻克' : `${days} 天前攻克`}
+              </span>
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 interface MistakesViewProps {
   words: Word[];
   mistakeIds: string[];
   srsMap: Record<string, SrsState>;
   /** 已攻克错词的累计计数（毕业沉淀） */
   graduatedCount?: number;
+  /** 已攻克错词记录列表（按攻克时间倒序） */
+  graduatedRecords?: GraduatedRecord[];
   onGoHome: () => void;
   /** 进入专项复习 - 直接复用 StudyMode 的队列模式 */
   onStartReview: (queue: Word[]) => void;
@@ -95,6 +166,7 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
   mistakeIds,
   srsMap,
   graduatedCount = 0,
+  graduatedRecords = [],
   onGoHome,
   onStartReview,
   onStartSpelling,
@@ -102,6 +174,8 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
 }) => {
   // 二次确认态
   const [confirming, setConfirming] = useState(false);
+  // 顶部 Tab：错词本 vs 已攻克
+  const [tab, setTab] = useState<'mistakes' | 'graduated'>('mistakes');
   // 提取有效单词 + 错误次数（missing srsState 视为 0 次，但仍在 mistakeIds 中就算"错词"）
   // 支持多种 key 形式：
   //   - wordKey: 'w:english|chinese'
@@ -171,6 +245,13 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
     .map(s => s.word);
   const spellingDueCount = spellingDueQueue.length;
 
+  // 已攻克视图：按 wordKey 在当前学段词表中找回 Word 对象（找不到的词也展示 english 文本兜底）
+  const graduatedRows = graduatedRecords
+    .map(rec => {
+      const w = matchWordKey(allWords, rec.key) ?? allWords.find(x => x.id === rec.key);
+      return { rec, word: w };
+    });
+
   return (
     <div className="w-full max-w-3xl mx-auto animate-fade-in px-2 self-stretch min-h-[60vh] sm:min-h-[70vh] flex flex-col">
       {/* 顶部 */}
@@ -186,7 +267,40 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
         <div className="w-16"></div>
       </div>
 
-      {total === 0 ? (
+      {/* 顶部 Tab：错词本 / 已攻克（默认错词本） */}
+      <div className="flex bg-slate-100 rounded-xl p-1 mb-4 self-stretch">
+        <button
+          type="button"
+          onClick={() => setTab('mistakes')}
+          className={
+            'flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-150 ' +
+            (tab === 'mistakes'
+              ? 'bg-white text-rose-600 shadow-sm'
+              : 'text-slate-500 hover:text-slate-700')
+          }
+        >
+          错词本 <span className="ml-1 text-xs opacity-70">({total})</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab('graduated')}
+          disabled={graduatedRecords.length === 0}
+          className={
+            'flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-150 flex items-center justify-center gap-1 ' +
+            (tab === 'graduated'
+              ? 'bg-white text-emerald-700 shadow-sm'
+              : 'text-slate-500 hover:text-slate-700') +
+            (graduatedRecords.length === 0 ? ' opacity-50 cursor-not-allowed' : '')
+          }
+        >
+          🏆 已攻克 <span className="ml-1 text-xs opacity-70">({graduatedCount})</span>
+        </button>
+      </div>
+
+      {tab === 'graduated' ? (
+        /* 已攻克视图 */
+        <GraduatedSection rows={graduatedRows} />
+      ) : total === 0 ? (
         <>
           <div className="bg-white rounded-2xl p-12 text-center border border-slate-100 mb-4">
             <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
@@ -196,11 +310,6 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
             <p className="text-slate-500 text-sm">
               回答时标记"模糊"或"不认识"的词会自动收纳到这里，便于专项攻克。
             </p>
-            {graduatedCount > 0 ? (
-              <p className="mt-4 text-sm text-emerald-600 font-medium">
-                🏆 你已攻克 <span className="font-bold">{graduatedCount}</span> 个错词
-              </p>
-            ) : null}
           </div>
 
           {/* 清空错词操作区（始终可见，让用户能主动清理残留脏数据） */}

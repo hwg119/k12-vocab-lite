@@ -9,6 +9,7 @@ import {
   StudyDayRecord,
   StudyUnit,
   Achievement,
+  GraduatedRecord,
 } from '../types';
 import { WORDS_BY_STAGE, ALL_WORDS } from '../data';
 import {
@@ -94,8 +95,10 @@ export interface UseStageReturn {
   todayHasActivity: boolean;
   /** 今日新学词数（每天自动归零） */
   todayNewLearned: number;
-  /** 已攻克错词的累计计数（毕业沉淀，按学段独立） */
+  /** 已攻克错词的累计计数（从记录数派生） */
   graduatedCount: number;
+  /** 已攻克错词记录列表（按时间倒序），用于错词本"已攻克"折叠区 */
+  graduatedRecords: GraduatedRecord[];
 }
 
 export function useStage(): UseStageReturn {
@@ -112,10 +115,10 @@ export function useStage(): UseStageReturn {
     StorageKeys.mistakes(stage),
     [],
   );
-  // 已攻克错词的累计计数（毕业沉淀，按学段独立）
-  const [graduatedCount, setGraduatedCount] = useLocalStorage<number>(
-    StorageKeys.graduated(stage),
-    0,
+  // 已攻克错词记录（毕业沉淀，按学段独立）。按攻克时间倒序。
+  const [graduatedRecords, setGraduatedRecords] = useLocalStorage<GraduatedRecord[]>(
+    StorageKeys.graduatedRecords(stage),
+    [],
   );
   const [studyDays, setStudyDays] = useLocalStorage<StudyDayRecord[]>(
     StorageKeys.studyDays,
@@ -400,6 +403,7 @@ export function useStage(): UseStageReturn {
       }
       // 1. 更新 SRS 状态（同时写 key + 旧 id 双映射）
       //    先在闭包 srsMap 上算出 next，便于同步判断"是否毕业出本"
+      const now = Date.now();
       const cur = srsMap[key] ?? srsMap[legacyId] ?? createInitialSrs();
       const rawNext = applyReview(cur, feedback);
       let next = rawNext;
@@ -434,7 +438,12 @@ export function useStage(): UseStageReturn {
         graduated = shouldGraduateFromMistakes(next);
         if (graduated) {
           setMistakeIds(prev => prev.filter(x => x !== key && x !== legacyId));
-          setGraduatedCount(prev => prev + 1);
+          // 沉淀到已攻克记录（去重：同 key 不重复入档；新记录头插）
+          const english = (typeof wordOrId !== 'string' ? wordOrId.english : '').toString();
+          setGraduatedRecords(prev => {
+            if (prev.some(r => r.key === key)) return prev;
+            return [{ english, key, graduatedAt: now }, ...prev];
+          });
         }
       } else {
         setMistakeIds(prev => {
@@ -457,7 +466,7 @@ export function useStage(): UseStageReturn {
       });
       return graduated;
     },
-    [setLearnedIds, setSrsMap, setMistakeIds, setGraduatedCount, setStudyDays, setTodayNewSnapshot, setTodayReviewedSnapshot, learnedIds, words, todayKey, srsMap],
+    [setLearnedIds, setSrsMap, setMistakeIds, setGraduatedRecords, setStudyDays, setTodayNewSnapshot, setTodayReviewedSnapshot, learnedIds, words, todayKey, srsMap],
   );
 
   /**
@@ -521,8 +530,8 @@ export function useStage(): UseStageReturn {
     setLearnedIds(new Set());
     setSrsMap({});
     setMistakeIds([]);
-    setGraduatedCount(0);
-  }, [setLearnedIds, setSrsMap, setMistakeIds, setGraduatedCount]);
+    setGraduatedRecords([]);
+  }, [setLearnedIds, setSrsMap, setMistakeIds, setGraduatedRecords]);
 
   /** 仅清空错词本（保留 learnedIds、srsMap、studyDays） */
   const clearMistakes = useCallback(() => {
@@ -588,6 +597,7 @@ export function useStage(): UseStageReturn {
     todayReviewedIds,
     todayHasActivity,
     todayNewLearned,
-    graduatedCount,
+    graduatedCount: graduatedRecords.length,
+    graduatedRecords,
   };
 }
