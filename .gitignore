@@ -54,3 +54,14 @@ ios/
 # Docs & temp
 docs/
 *.patch
+
+# 图片生成/下载的中间清单与原始图（压缩版 word-images-webp/ 保留提交）
+/scripts/_top1500.txt
+/src/assets/_no-image-all.txt
+/src/assets/_todo-*.txt
+/src/assets/word-images/
+
+# 排查图片时的临时测试残留
+/test.png
+/test_check_bom.json
+/test_no_bom.json
