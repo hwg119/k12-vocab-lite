@@ -27,7 +27,7 @@ interface StatsViewProps {
  * 数据周报 / 学习统计
  *
  * 三块：
- *   1. 顶部：本学段 4 类进度（已掌握 / 待复习 / 易错 / 未学习）
+ *   1. 顶部：本学段 4 类进度（已掌握 / 待复习 / 错词 / 未学习）
  *   2. 近 7 日柱状图（每日学习量 + 正确率提示线）
  *   3. 周报评语卡 + 总数据网格
  */
@@ -54,7 +54,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
   // 4 类互斥切分
   const total = words.length;
   const learned = learnedIds.size;
-  // 易错词中未掌握的
+  // 错词中未掌握的
   const mistakeUnlearned = mistakeIds.filter(id => !learnedIds.has(id)).length;
   // 待复习 = dueCount 中未掌握的部分（已掌握一般不再"待复习"）
   const dueUnlearned = Math.min(dueCount, total - learned); // 估算
@@ -96,7 +96,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         <Tile label="已掌握" value={learned} total={total} colorClass={stage} bar={learned / Math.max(total, 1)} />
         <Tile label="待复习" value={dueUnlearned} total={total} colorClass="amber" bar={dueUnlearned / Math.max(total, 1)} />
-        <Tile label="易错词" value={mistakeUnlearned} total={total} colorClass="rose" bar={mistakeUnlearned / Math.max(total, 1)} />
+        <Tile label="错词" value={mistakeUnlearned} total={total} colorClass="rose" bar={mistakeUnlearned / Math.max(total, 1)} />
         <Tile label="未学习" value={unlearned} total={total} colorClass="slate" bar={unlearned / Math.max(total, 1)} />
       </div>
 

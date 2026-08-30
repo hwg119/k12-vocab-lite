@@ -37,3 +37,4 @@ export type { DailySummary } from './weekly';
 export { groupConfusionPairs } from './confusion';
 export type { ConfusionGroup } from './confusion';
 export { exportBundle, importBundle, downloadBundle, readBundleFromFile } from './backup';
+export { createInitialSpelling, applySpellingReview, shouldGraduateSpelling } from './sm2';

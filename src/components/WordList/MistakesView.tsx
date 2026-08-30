@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { Word, SrsState } from '../../types';
 import { matchWordKey, graduationThreshold } from '../../utils';
 import { IconArrowLeft, IconTrash } from '../Icons';
@@ -18,12 +18,12 @@ interface MistakesViewProps {
 }
 
 /**
- * 易错生词本视图
+ * 错词本视图
  *
- * - 自动汇总本学段标记为「易错」的单词
+ * - 自动汇总本学段标记为「错词」的单词
  * - 按错误次数降序
- * - 支持"专项复习"按钮：把易错词队列灌给学习模式
- * - 支持"清空错词"按钮：清空当前学段易错本
+ * - 支持"专项复习"按钮：把错词队列灌给学习模式
+ * - 支持"清空错词"按钮：清空当前学段错词本
  */
 export const MistakesView: React.FC<MistakesViewProps> = ({
   words,
@@ -36,7 +36,7 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
 }) => {
   // 二次确认态
   const [confirming, setConfirming] = useState(false);
-  // 提取有效单词 + 错误次数（missing srsState 视为 0 次，但仍在 mistakeIds 中就算"易错"）
+  // 提取有效单词 + 错误次数（missing srsState 视为 0 次，但仍在 mistakeIds 中就算"错词"）
   // 支持多种 key 形式：
   //   - wordKey: 'w:english|chinese'
   //   - 历史 id 格式: 'wd_xxx'
@@ -45,39 +45,37 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
   // 从而把外学段 id 引入本学段 srsMap（串读）。
   const allWords = words;
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useMemo(() => {
-    console.log('[MistakesView] mistakeIds总数:', mistakeIds.length, '当前学段词数:', words.length);
-    if (mistakeIds.length > 0) {
-      console.log('[MistakesView] mistakeIds 前 10:', mistakeIds.slice(0, 10));
-      console.log('[MistakesView] 当前学段首 3 个 wordKey:', words.slice(0, 3).map(w => ({ id: w.id, key: `w:${w.english}|${w.chinese}` })));
-    }
-    try {
-      for (const stage of ['primary', 'junior', 'senior']) {
-        const raw = window.localStorage.getItem(`k12-vocab-mistakes-${stage}`);
-        if (raw) console.log(`[MistakesView] localStorage ${stage}:`, raw.slice(0, 200));
-      }
-    } catch {}
-    return null;
-  }, [mistakeIds.length]);
-
   const sortedWords = mistakeIds
     .map((id, idx) => {
       const w = matchWordKey(allWords, id);
       if (!w) return null;
       // srsMap 同时支持 key 和旧 id
       const srs = srsMap[id] ?? srsMap[w.id] ?? srsMap[`w:${w.english}|${w.chinese}`];
+      const sp = srs?.spelling;
       return {
         word: w,
         wrong: srs?.wrongCount ?? 0,
         repetitions: srs?.repetitions ?? 0,
         dueAt: srs?.dueAt ?? 0,
+        spWrong: sp?.wrongCount ?? 0,
+        spRep: sp?.repetitions ?? 0,
+        spDueAt: sp?.dueAt ?? 0,
+        hasSpelling: !!sp,
         idx,
       };
     })
     .filter(
-      (x): x is { word: Word; wrong: number; repetitions: number; dueAt: number; idx: number } =>
-        x !== null,
+      (x): x is {
+        word: Word;
+        wrong: number;
+        repetitions: number;
+        dueAt: number;
+        spWrong: number;
+        spRep: number;
+        spDueAt: number;
+        hasSpelling: boolean;
+        idx: number;
+      } => x !== null,
     )
     // 主排序：错次多 → 少；同错次：先加入 mistakeIds 的在前
     .sort((a, b) => (b.wrong - a.wrong) || (a.idx - b.idx));
@@ -90,6 +88,11 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
     .map(s => s.word);
   const dueCount = dueQueue.length;
   const reviewableQueue = sortedWords.map(s => s.word);
+  // 拼写维度到期队列：仅统计已存在拼写记录且到期的词（拼写与词义两条线独立）
+  const spellingDueQueue = sortedWords
+    .filter(s => s.hasSpelling && (s.spDueAt === 0 || s.spDueAt <= now))
+    .map(s => s.word);
+  const spellingDueCount = spellingDueQueue.length;
 
   return (
     <div className="w-full max-w-3xl mx-auto animate-fade-in px-2 self-stretch min-h-[60vh] sm:min-h-[70vh] flex flex-col">
@@ -102,7 +105,7 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
           <IconArrowLeft className="w-4 h-4" />
           回首页
         </button>
-        <h2 className="text-xl font-bold text-slate-800">易错生词本</h2>
+        <h2 className="text-xl font-bold text-slate-800">错词本</h2>
         <div className="w-16"></div>
       </div>
 
@@ -112,7 +115,7 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
             <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
               🎯
             </div>
-            <h3 className="text-lg font-bold text-slate-800 mb-2">暂无易错词</h3>
+            <h3 className="text-lg font-bold text-slate-800 mb-2">暂无错词</h3>
             <p className="text-slate-500 text-sm">
               回答时标记"模糊"或"不认识"的词会自动收纳到这里，便于专项攻克。
             </p>
@@ -165,7 +168,7 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
                 onClick={() => onStartReview(dueQueue)}
                 className="mt-4 w-full py-2.5 bg-white text-rose-600 font-semibold rounded-lg border border-rose-200 hover:bg-rose-50 transition-colors"
               >
-                开始复习今日到期的 {dueCount} 个易错词
+                开始复习今日到期的 {dueCount} 个错词
               </button>
             ) : null}
             <button
@@ -174,11 +177,19 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
             >
               复习全部 {total} 个错词
             </button>
+            {spellingDueCount > 0 ? (
+              <button
+                onClick={() => onStartSpelling(spellingDueQueue)}
+                className="mt-3 w-full py-2.5 bg-rose-600 text-white font-semibold rounded-lg hover:bg-rose-700 shadow-lg shadow-rose-200 transition-all duration-200"
+              >
+                ✍️ 今日拼写到期 {spellingDueCount} 个 · 先巩固
+              </button>
+            ) : null}
             <button
               onClick={() => onStartSpelling(reviewableQueue)}
-              className="mt-3 w-full py-2.5 bg-rose-600 text-white font-semibold rounded-lg hover:bg-rose-700 shadow-lg shadow-rose-200 transition-all duration-200"
+              className="mt-2 w-full py-2 text-rose-500 hover:text-rose-700 text-sm underline underline-offset-4 transition-colors"
             >
-              ✍️ 拼写训练（看中文 · 按音节点选字母）
+              拼写训练全部 {total} 个（看中文 · 按音节点选字母）
             </button>
           </div>
 
@@ -217,9 +228,11 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
 
           {/* 列表 */}
           <ul className="space-y-2">
-            {sortedWords.map(({ word, wrong, repetitions }) => {
+            {sortedWords.map(({ word, wrong, repetitions, spWrong, spRep }) => {
               const threshold = graduationThreshold(wrong);
               const progress = Math.min(repetitions, threshold);
+              const spThreshold = graduationThreshold(spWrong);
+              const spProgress = Math.min(spRep, spThreshold);
               return (
                 <li
                   key={word.id}
@@ -256,6 +269,16 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
                         ⚑ 巩固 {progress}/{threshold}
                       </span>
                     ) : null}
+                    <span
+                      className={
+                        'inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium rounded-full whitespace-nowrap ' +
+                        (spProgress >= spThreshold
+                          ? 'text-emerald-600 bg-emerald-50 border border-emerald-200'
+                          : 'text-indigo-600 bg-indigo-50 border border-indigo-200')
+                      }
+                    >
+                      ✎ 拼写 {spProgress}/{spThreshold}
+                    </span>
                   </div>
                 </li>
               );

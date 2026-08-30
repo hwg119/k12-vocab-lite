@@ -7,7 +7,7 @@ interface StudyModeProps {
   studyQueue: Word[];
   learnedIds: Set<string>;
   source?: 'default' | 'review' | 'mistakes' | 'unit' | 'confusion' | 'newWord' | 'batch';
-  /** 易错词"毕业"庆祝提示（专项复习连续答对达标时由 App 传入） */
+  /** 错词"毕业"庆祝提示（专项复习连续答对达标时由 App 传入） */
   graduatedNotice?: { english: string; key: number } | null;
   /** 用户提交一档反馈（know / vague / unknown）
    *  - know   → mastered
@@ -26,7 +26,7 @@ interface StudyModeProps {
  *   - Vague（模糊）→ 黄色 outline
  *   - Unknown（不认识）→ 红色 outline
  *
- * 反馈会自动驱动 SM2 算法与易错生词本
+ * 反馈会自动驱动 SM2 算法与错词本
  */
 export const StudyMode: React.FC<StudyModeProps> = ({
   studyQueue,
@@ -39,7 +39,7 @@ export const StudyMode: React.FC<StudyModeProps> = ({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const isProcessingRef = useRef(false);
-  // 易错词"毕业"庆祝 toast
+  // 错词"毕业"庆祝 toast
   const [graduateToast, setGraduateToast] = useState<{ english: string } | null>(null);
   const lastNoticeKeyRef = useRef<number>(0);
   useEffect(() => {
@@ -94,7 +94,7 @@ export const StudyMode: React.FC<StudyModeProps> = ({
         </div>
         <h2 className="text-2xl font-bold text-slate-800 mb-2">本批次完成</h2>
         <p className="text-slate-500 text-center mb-6">
-          你已经过完本次学习队列。错词已自动加入易错生词本，可随时专项攻克。
+          你已经过完本次学习队列。错词已自动加入错词本，可随时专项攻克。
         </p>
         <button
           onClick={onGoHome}
@@ -108,13 +108,13 @@ export const StudyMode: React.FC<StudyModeProps> = ({
 
   return (
     <div className="h-full flex flex-col items-center justify-start max-w-2xl mx-auto w-full animate-slide-up px-6 pt-6">
-      {/* 易错词毕业庆祝 toast */}
+      {/* 错词毕业庆祝 toast */}
       <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50">
         {graduateToast && (
           <div className="flex items-center gap-2 px-5 py-3 bg-emerald-600 text-white rounded-2xl shadow-xl shadow-emerald-300/40 animate-fade-in">
             <span className="text-xl">🎉</span>
             <span className="font-semibold">
-              已攻克 <span className="font-bold">{graduateToast.english}</span>！连续答对达标，移出易错本
+              已攻克 <span className="font-bold">{graduateToast.english}</span>！连续答对达标，移出错词本
             </span>
           </div>
         )}

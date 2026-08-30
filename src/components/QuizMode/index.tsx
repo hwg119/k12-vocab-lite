@@ -64,7 +64,7 @@ export const QuizMode: React.FC<QuizModeProps> = ({
     if (isCorrect) {
       setScore(prev => prev + 1);
     }
-    // 通知外层：打卡 + 勋章 + 易错本收集
+    // 通知外层：打卡 + 勋章 + 错词本收集
     onAnswer?.(isCorrect, currentQuestion.word.id);
   }, [currentQuestion.correctIndex, currentQuestion.word.id, selectedOption, onAnswer]);
 

@@ -78,6 +78,16 @@ export interface QuizQuestion {
  * - wrongCount: 错误次数（累计）
  * - firstMasteredAt: 首次进入"已掌握"的时间戳（毫秒）。仅在第一次掌握时写入，后续复习不刷新。
  */
+/** 拼写维度的独立学习状态（可选）。仅当该词进入拼写训练名单时才存在 */ 
+export interface SpellingDim {
+  /** 拼写连续答对数（错误时清零） */
+  repetitions: number;
+  /** 拼写错误累计次数 */
+  wrongCount: number;
+  /** 拼写下次复习到期时间戳（ms）；0 = 立即到期 */
+  dueAt: number;
+}
+
 export interface SrsState {
   repetitions: number;
   easeFactor: number;
@@ -87,6 +97,8 @@ export interface SrsState {
   wrongCount: number;
   /** 首次掌握时间戳（首次标记为"已掌握"的时刻） */
   firstMasteredAt?: number;
+  /** 拼写维度独立 SRS（可选）。与词义维度并行，互不设门槛 */
+  spelling?: SpellingDim;
 }
 
 /** 每日学习打卡记录 - 用于续航/连续天数统计 */
@@ -163,7 +175,7 @@ export const StorageKeys = {
   learnedIds: (stage: Stage) => `vocab-${stage}-learned`,
   /** SRS 状态映射 wordId -> SrsState */
   srs: (stage: Stage) => `vocab-${stage}-srs`,
-  /** 易错词 ID 列表（专项复习） */
+  /** 错词 ID 列表（专项复习） */
   mistakes: (stage: Stage) => `vocab-${stage}-mistakes`,
   /** 勋章成就 */
   achievements: (stage: Stage) => `vocab-${stage}-achievements`,

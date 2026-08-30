@@ -1,4 +1,4 @@
-import { ReviewFeedback, SrsState } from '../types';
+import { ReviewFeedback, SrsState, SpellingDim } from '../types';
 import { shuffleArray } from './array';
 
 /**
@@ -142,7 +142,50 @@ export function shouldGraduateFromMistakes(state: SrsState): boolean {
   return state.repetitions >= graduationThreshold(state.wrongCount);
 }
 
-/** 易错排行：按 wrongCount 降序，取前 N 个 id */
+/**
+ * 拼写维度的初始状态（可选，延后创建）
+ */
+export function createInitialSpelling(): SpellingDim {
+  return { repetitions: 0, wrongCount: 0, dueAt: 0 };
+}
+
+/**
+ * 应用一次拼写反馈（拼写训练·点选式），只更新拼写维度，不影响词义 SRS 进度。
+ * - feedback === 'know'（拼写正确）→ 连续答对 +1，进入下一个间隔复习
+ * - 其余（拼写错误，SpellingMode 传 unknown）→ 连续答对清零、错误 +1、次日复习
+ */
+export function applySpellingReview(
+  prev: SpellingDim | undefined,
+  feedback: ReviewFeedback,
+  now: number = Date.now(),
+): SpellingDim {
+  const base = prev ?? createInitialSpelling();
+  if (feedback === 'know') {
+    const intervalDays = base.repetitions === 0 ? 1 : base.repetitions === 1 ? 3 : 6;
+    return {
+      repetitions: base.repetitions + 1,
+      wrongCount: base.wrongCount,
+      dueAt: now + intervalDays * MS_PER_DAY,
+    };
+  }
+  return {
+    repetitions: 0,
+    wrongCount: base.wrongCount + 1,
+    dueAt: now + MS_PER_DAY,
+  };
+}
+
+/**
+ * 拼写维度是否"拼写攻克"：拼写连续答对数已达该拼写错次对应的阈值。
+ * 复用错词出本分档（wrongCount 越小所需答对数越少）。
+ */
+export function shouldGraduateSpelling(state: SrsState | undefined): boolean {
+  const sp = state?.spelling;
+  if (!sp || sp.repetitions === 0) return false;
+  return sp.repetitions >= graduationThreshold(sp.wrongCount);
+}
+
+/** 错词排行：按 wrongCount 降序，取前 N 个 id */
 export function pickMistakes(
   words: { id: string }[],
   srsMap: Record<string, SrsState>,

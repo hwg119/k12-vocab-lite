@@ -15,6 +15,8 @@ import {
   createInitialSrs,
   applyReview,
   shouldGraduateFromMistakes,
+  applySpellingReview,
+  shouldGraduateSpelling,
   planUnitsForStage,
   evaluateAchievements,
   computeStreak,
@@ -68,8 +70,11 @@ export interface UseStageReturn {
   unmarkLearned: (wordOrId: Word | string) => void;
   /** 提交反馈；返回该词本次是否因连续答对达标而"毕业出本"（供 UI 庆祝/提示） */
   submitFeedback: (wordOrId: Word | string, feedback: ReviewFeedback) => boolean;
+  /** 提交一次拼写反馈；只更新拼写维度(spelling)，不触碰词义 SRS 进度。
+   *  返回拼写维度是否"拼写攻克"达标（供 UI 庆祝/提示）。 */
+  submitSpelling: (wordOrId: Word | string, feedback: ReviewFeedback) => boolean;
   recordQuizAnswer: (isCorrect: boolean, word?: Word) => void;
-  /** 仅清空易错本（保留已掌握、SRS、打卡） */
+  /** 仅清空错词本（保留已掌握、SRS、打卡） */
   clearMistakes: () => void;
   resetProgress: () => void;
   focusMode: boolean;
@@ -400,7 +405,7 @@ export function useStage(): UseStageReturn {
         [key]: next,
         [legacyId]: next,
       }));
-      // 2. 联动易错本与掌握集合
+      // 2. 联动错词本与掌握集合
       let graduated = false;
       if (feedback === 'know') {
         setLearnedIds(prev => {
@@ -418,7 +423,7 @@ export function useStage(): UseStageReturn {
             return { date: today, count: base + 1 };
           });
         }
-        // 连续答对达标才毕业出本；未达标仍留在易错本，等待下一次间隔复习
+        // 连续答对达标才毕业出本；未达标仍留在错词本，等待下一次间隔复习
         graduated = shouldGraduateFromMistakes(next);
         if (graduated) {
           setMistakeIds(prev => prev.filter(x => x !== key && x !== legacyId));
@@ -447,6 +452,38 @@ export function useStage(): UseStageReturn {
     [setLearnedIds, setSrsMap, setMistakeIds, setStudyDays, setTodayNewSnapshot, setTodayReviewedSnapshot, learnedIds, words, todayKey, srsMap],
   );
 
+  /**
+   * 提交一次拼写反馈（拼写训练专用）。
+   * 只在 srsMap 里更新 spelling 子维度，不触碰词义 repetitions/easeFactor/dueAt，
+   * 也不把该词记入错词本——看清义掌握由 submitFeedback 管，拼写独立攻坚。
+   * 返回拼写维度是否"拼写攻克"（spelling.repetitions >= graduationThreshold）。
+   */
+  const submitSpelling = useCallback(
+    (wordOrId: Word | string, feedback: ReviewFeedback): boolean => {
+      const word = typeof wordOrId === 'string'
+        ? words.find(w => w.id === wordOrId)
+        : wordOrId;
+      if (!word) return false;
+      const key = wordKey(word);
+      const legacyId = word.id;
+      const now = Date.now();
+      let graduated = false;
+      setSrsMap(prev => {
+        const cur = prev[key] ?? prev[legacyId] ?? createInitialSrs();
+        const next = {
+          ...cur,
+          spelling: applySpellingReview(cur.spelling, feedback, now),
+        };
+        graduated = shouldGraduateSpelling(next);
+        return { ...prev, [key]: next, [legacyId]: next };
+      });
+      // 拼写训练也算一次学习活动（打卡/答题统计）
+      setStudyDays(prev => recordActivity(prev, feedback, feedback === 'know'));
+      return graduated;
+    },
+    [words, setSrsMap, setStudyDays],
+  );
+
   const recordQuizAnswer = useCallback(
     (isCorrect: boolean, word?: Word) => {
       // 打卡统计
@@ -455,7 +492,7 @@ export function useStage(): UseStageReturn {
       const key = wordKey(word);
       const legacyId = word.id;
       const mastered = learnedIds.has(key) || learnedIds.has(legacyId);
-      // 答错时：已掌握的不处理，未掌握的才记入易错本并更新 SRS
+      // 答错时：已掌握的不处理，未掌握的才记入错词本并更新 SRS
       if (!isCorrect && !mastered) {
         // 更新 SRS（走 SM2 曲线，而非仅累加 wrongCount）
         setSrsMap(prev => {
@@ -478,7 +515,7 @@ export function useStage(): UseStageReturn {
     setMistakeIds([]);
   }, [setLearnedIds, setSrsMap, setMistakeIds]);
 
-  /** 仅清空易错本（保留 learnedIds、srsMap、studyDays） */
+  /** 仅清空错词本（保留 learnedIds、srsMap、studyDays） */
   const clearMistakes = useCallback(() => {
     setMistakeIds([]);
   }, [setMistakeIds]);
@@ -527,6 +564,7 @@ export function useStage(): UseStageReturn {
     markLearned,
     unmarkLearned,
     submitFeedback,
+    submitSpelling,
     recordQuizAnswer,
     clearMistakes,
     resetProgress,

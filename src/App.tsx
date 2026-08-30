@@ -54,7 +54,7 @@ import {
  * 主要变更（相对 v1.0）：
  *   - 顶部加入学段切换器（小学/初中/高中），按学段隔离数据
  *   - 接入 SM2 间隔重复算法，submitFeedback 取代原有 markAsLearned
- *   - 新增易错生词本（mistakes 视图）
+ *   - 新增错词本（mistakes 视图）
  *   - 新增单元闯关（units 视图）+ 勋章墙（achievements 视图）
  *   - 首页 Dashboard 显示"今日待复习"数量
  */
@@ -74,6 +74,7 @@ export default function App() {
     markLearned,
     unmarkLearned,
     submitFeedback,
+    submitSpelling,
     recordQuizAnswer,
     clearMistakes,
     resetProgress,
@@ -205,7 +206,7 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [studyQueue, setStudyQueue] = useState<Word[]>([]);
   const [studySource, setStudySource] = useState<'default' | 'review' | 'mistakes' | 'unit' | 'confusion' | 'newWord' | 'spelling' | 'batch'>('default');
-  // 易错词"毕业"庆祝提示（专项复习连续答对达标时弹 toast）
+  // 错词"毕业"庆祝提示（专项复习连续答对达标时弹 toast）
   const [graduatedNotice, setGraduatedNotice] = useState<{ english: string; key: number } | null>(null);
   const [quizQuestions, setQuizQuestions] = useState<ReturnType<typeof generateQuiz>>([]);
   const [quizMode, setQuizMode] = useState<'daily' | 'sprint' | 'challenge'>('daily');
@@ -283,7 +284,7 @@ export default function App() {
     setView('study');
   }, []);
 
-  // 易错生词本队列
+  // 错词本队列
   const startMistakesReview = useCallback((queue: Word[]) => {
     const ids = pickMistakes(queue, srsMap, queue.length);
     const wordsByIds = ids
@@ -294,7 +295,7 @@ export default function App() {
     setView('study');
   }, [words, srsMap]);
 
-  // 拼写默写（易错词主动回忆）：按当前错词全量出题，不按到期
+  // 拼写默写（错词主动回忆）：按当前错词全量出题，不按到期
   const startSpelling = useCallback((queue: Word[]) => {
     setStudyQueue(queue);
     setStudySource('spelling');
@@ -466,7 +467,7 @@ export default function App() {
             <NavButton active={view === 'dashboard'} onClick={() => setView('dashboard')} icon={<IconHome />} label="首页" />
             <NavButton active={view === 'study'} onClick={startBatch} icon={<IconBook />} label="开始学习" />
             <NavButton active={view === 'units'} onClick={() => setView('units')} icon={<IconGrid />} label={`闯关 (${summary.unitsCompleted}/${summary.unitsTotal})`} />
-            <NavButton active={view === 'mistakes'} onClick={() => setView('mistakes')} icon={<IconAlertCircle />} label={`易错词 (${mistakeIds.length})`} />
+            <NavButton active={view === 'mistakes'} onClick={() => setView('mistakes')} icon={<IconAlertCircle />} label={`错词本 (${mistakeIds.length})`} />
             <NavButton active={view === 'confusions'} onClick={() => setView('confusions')} icon={<IconQuestion />} label={`易混淆词 (${confusionCount})`} />
             <NavButton active={view === 'list'} onClick={() => setView('list')} icon={<IconList />} label="词典" />
             <NavButton active={view === 'learned'} onClick={() => setView('learned')} icon={<IconChart />} label="已掌握" />
@@ -587,7 +588,7 @@ export default function App() {
                   graduatedNotice={graduatedNotice}
                   onSubmit={(id, fb) => {
                     const w = words.find(x => x.id === id);
-                    const graduated = submitFeedback(w ?? id, fb);
+                    const graduated = submitSpelling(w ?? id, fb);
                     if (graduated) {
                       setGraduatedNotice({ english: w?.english ?? id, key: Date.now() });
                     }

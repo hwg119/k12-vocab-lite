@@ -6,21 +6,22 @@ import { WordImage } from '../WordImage';
 
 interface SpellingModeProps {
   studyQueue: Word[];
-  /** 拼写正确是否纳入连续答对毕业（易错词拼写训练专用） */
+  /** 拼写正确是否纳入拼写维度毕业（错词拼写训练专用；不触碰词义出本） */
   onSubmit: (id: string, feedback: ReviewFeedback) => void;
-  /** 易错词"毕业"庆祝提示（由 App 传入） */
+  /** 拼写维度"拼写攻克"庆祝提示（由 App 传入） */
   graduatedNotice?: { english: string; key: number } | null;
   onGoHome: () => void;
 }
 
 /**
- * 拼写默写模式（易错词主动回忆·点选式）
+ * 拼写默写模式（错词主动回忆·点选式）
  *
  * 保留"主动回忆"记忆强度但降低门槛：
  * - 展示中文释义 + 音标，首字母（短词给 1 个、长词给 2 个）自动提示
  * - 词按音节分段展示，作为视觉脚手架
  * - 不弹键盘，从屏幕字母按钮按顺序点选填补，可撤销
- * 拼写正确 = know（推进连续答对/毕业），拼写错误 = unknown（重置）。
+ * 拼写正确 = know（推进拼写维度连续答对/拼写攻克），拼写错误 = unknown（重置拼写维度）。
+ * 只更新 spelling 子状态，不影响词义 SRS 进度。
  */
 export const SpellingMode: React.FC<SpellingModeProps> = ({
   studyQueue,
@@ -138,7 +139,7 @@ export const SpellingMode: React.FC<SpellingModeProps> = ({
         </div>
         <h2 className="text-2xl font-bold text-slate-800 mb-2">拼写训练完成</h2>
         <p className="text-slate-500 text-center mb-6">
-          已过完全部拼写。拼错的词会留在易错本，明天按间隔巩固。
+          已过完全部拼写。拼错的词会留在错词本，明天按间隔巩固。
         </p>
         <button
           onClick={onGoHome}
@@ -161,7 +162,7 @@ export const SpellingMode: React.FC<SpellingModeProps> = ({
           <div className="flex items-center gap-2 px-5 py-3 bg-emerald-600 text-white rounded-2xl shadow-xl shadow-emerald-300/40 animate-fade-in">
             <span className="text-xl">🎉</span>
             <span className="font-semibold">
-              已攻克 <span className="font-bold">{graduateToast.english}</span>！移出易错本
+              已攻克 <span className="font-bold">{graduateToast.english}</span>！拼写拿下
             </span>
           </div>
         )}

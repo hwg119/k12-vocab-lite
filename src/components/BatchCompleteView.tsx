@@ -54,7 +54,7 @@ export const BatchCompleteView: React.FC<BatchCompleteViewProps> = ({
 
       {total > 0 && (
         <p className="text-sm text-slate-400 text-center mb-8">
-          本批共 {total} 词，答错的已自动加入易错生词本
+          本批共 {total} 词，答错的已自动加入错词本
         </p>
       )}
 

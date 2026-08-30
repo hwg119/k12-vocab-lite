@@ -66,7 +66,7 @@ export function weeklyComment(opts: {
 
   if (learnedCount === 0) return '刚开始就很好，保持今日的节奏，下周再来看。';
   if (currentStreak >= 7) return `已连续打卡 ${currentStreak} 天，最长 ${longestStreak} 天。习惯比计划更重要。`;
-  if (accuracy >= 0.9 && learnedCount >= 50) return `正确率 ${(accuracy * 100).toFixed(0)}%，记得再过一遍易错本。`;
+  if (accuracy >= 0.9 && learnedCount >= 50) return `正确率 ${(accuracy * 100).toFixed(0)}%，记得再过一遍错词本。`;
   if (dailyAvg >= 30) return `日均 ${Math.round(dailyAvg)} 词，节奏稳定。`;
   if (learnedCount >= 100) return `已掌握 ${learnedCount} 词，下一阶段冲 200。`;
   return '继续每天背一点就好，词汇是日积月累。';
