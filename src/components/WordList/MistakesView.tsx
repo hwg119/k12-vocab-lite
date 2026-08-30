@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { Word, SrsState } from '../../types';
-import { ALL_WORDS } from '../../data';
 import { matchWordKey, graduationThreshold } from '../../utils';
 import { IconArrowLeft, IconTrash } from '../Icons';
+import { WordImage } from '../WordImage';
 
 interface MistakesViewProps {
   words: Word[];
@@ -38,10 +38,12 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
   const [confirming, setConfirming] = useState(false);
   // 提取有效单词 + 错误次数（missing srsState 视为 0 次，但仍在 mistakeIds 中就算"易错"）
   // 支持多种 key 形式：
-  //   - 新格式 wordKey: 'w:english|chinese'
-  //   - 旧 id 格式: 'wd_xxx'
-  // 先用当前学段查；若找不到，回退到所有学段的合并词表
-  const allWords = useMemo<Word[]>(() => [...words, ...ALL_WORDS], [words]);
+  //   - wordKey: 'w:english|chinese'
+  //   - 历史 id 格式: 'wd_xxx'
+  // 仅用当前学段词表解析：错词 id 均由本学段流程写入（wordKey+当前 id 双写），
+  // 不合并 ALL_WORDS，避免解析到另一学段（junior/senior 大量同词条）的副本
+  // 从而把外学段 id 引入本学段 srsMap（串读）。
+  const allWords = words;
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useMemo(() => {
@@ -223,12 +225,20 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
                   key={word.id}
                   className="bg-white rounded-xl border border-slate-100 p-4 flex items-center justify-between hover:shadow-sm transition-shadow"
                 >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-baseline gap-2">
-                      <span className="font-bold text-slate-800">{word.english}</span>
-                      <span className="text-xs text-indigo-500 font-mono">{word.phonetic}</span>
+                  <div className="flex-1 min-w-0 flex items-center gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-baseline gap-2">
+                        <span className="font-bold text-slate-800">{word.english}</span>
+                        <span className="text-xs text-indigo-500 font-mono">{word.phonetic}</span>
+                      </div>
+                      <p className="text-sm text-slate-500 mt-1 break-words leading-relaxed">{word.chinese}</p>
                     </div>
-                    <p className="text-sm text-slate-500 mt-1 break-words leading-relaxed">{word.chinese}</p>
+                    <WordImage
+                      english={word.english}
+                      alt={word.english}
+                      className="w-10 h-10 rounded-lg bg-slate-100 shrink-0"
+                      zoomable={false}
+                    />
                   </div>
                   <div className="flex flex-col items-end gap-1.5 shrink-0 ml-3">
                     <span className="inline-flex items-center justify-center min-w-[28px] h-7 px-2 text-xs font-mono text-rose-600 bg-rose-50 rounded-full border border-rose-100">

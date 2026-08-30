@@ -3,7 +3,6 @@ import { Word, AppView } from './types';
 import { STAGE_META } from './data';
 import {
   generateQuiz,
-  sample,
   pickMistakes,
   buildDailySummaries,
   groupConfusionPairs,
@@ -11,7 +10,7 @@ import {
   buildChallengeQuestions,
   wordKey,
 } from './utils';
-import { useStage } from './hooks';
+import { useStage, useLocalStorage } from './hooks';
 import { useEdgeSwipe } from './hooks/useEdgeSwipe';
 import { APP_VERSION, LATEST_VERSION } from './version';
 import {
@@ -33,6 +32,7 @@ import {
   SettingsView,
   LearnedView,
   TodayReviewedView,
+  BatchCompleteView,
   ErrorBoundary,
 } from './components';
 import {
@@ -81,10 +81,8 @@ export default function App() {
     setFocusMode,
     quizFeedbackDelayMs,
     setQuizFeedbackDelayMs,
-    todayInitialDue,
     todayReviewed,
     todayReviewedIds,
-    todayHasActivity,
     todayNewLearned,
   } = useStage();
 
@@ -206,7 +204,7 @@ export default function App() {
   }, [goBackView]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [studyQueue, setStudyQueue] = useState<Word[]>([]);
-  const [studySource, setStudySource] = useState<'default' | 'review' | 'mistakes' | 'unit' | 'confusion' | 'newWord' | 'spelling'>('default');
+  const [studySource, setStudySource] = useState<'default' | 'review' | 'mistakes' | 'unit' | 'confusion' | 'newWord' | 'spelling' | 'batch'>('default');
   // 易错词"毕业"庆祝提示（专项复习连续答对达标时弹 toast）
   const [graduatedNotice, setGraduatedNotice] = useState<{ english: string; key: number } | null>(null);
   const [quizQuestions, setQuizQuestions] = useState<ReturnType<typeof generateQuiz>>([]);
@@ -231,40 +229,52 @@ export default function App() {
     senior: 'bg-indigo-600',
   };
 
-  const sessionSize = 50;
+  // 单批数量偏好（默认 15；可配 10/15/20/30），持久化
+  const [batchSizePref] = useLocalStorage<number>('vocab-batch-size', 15);
+  const sessionSize = batchSizePref > 0 ? batchSizePref : 15;
+  // 本批刚学过的词 key 集合（供"再来一批"排除，避免夹带）
+  const batchLearnedRef = useRef<Set<string>>(new Set());
+  // 本批统计快照（reviewed 复习 / newWords 新学），供完成页读取
+  const batchStatsRef = useRef<{ reviewed: number; newWords: number }>({ reviewed: 0, newWords: 0 });
+  // 本批完成统计状态（完成页 b 展示）
+  const [batchResult, setBatchResult] = useState<{ reviewed: number; newWords: number } | null>(null);
+  // 进入学习前意图标记：'batch' = 单一全流程；其余沿用已有（unit/mistakes/spelling...）
+  const enteringBatchRef = useRef(false);
 
-  // 启动学习模式 - SRS 复习（只取剩余待复习词，不补新词/远期词）
-  const startStudy = useCallback(() => {
+  /**
+   * 单一取批 - 到期优先 → 不足补新词 → 仍不足给全部
+   * 每批数量 = sessionSize（默认 15），末尾自动可能少于 sessionSize。
+   */
+  const startBatch = useCallback(() => {
     const now = Date.now();
-    // 只筛出"真正到期需复习"的词（有 SRS 记录且 dueAt <= now）
-    const dueIds = words
-      .filter(w => {
-        const key = wordKey(w);
-        const state = srsMap[key] ?? srsMap[w.id];
-        return state && (state.dueAt === 0 || state.dueAt <= now);
-      })
-      .map(w => w.id);
-    // 已学过的词中，剩余待复习的就是 dueIds；样本抽样避免每次都按同一顺序
-    const session = sample(words.filter(w => dueIds.includes(w.id)), sessionSize);
-    // 兜底：如果一个都没筛出来，用全部 words（极端情况下 srsMap 全空）
-    const finalQueue = session.length > 0 ? session : sample(words, sessionSize);
-    setStudyQueue(finalQueue);
-    setStudySource('review');
-    setView('study');
-  }, [words, srsMap]);
-
-  // 启动学习模式 - 仅新词（从未学过的）
-  const startNewWord = useCallback(() => {
+    const learned: Set<string> = learnedIds ?? new Set<string>();
+    // 1) 到期词（有 SRS 记录且 dueAt 到期），排除本批刚学过的
+    const due = words.filter(w => {
+      const state = srsMap[wordKey(w)] ?? srsMap[w.id];
+      return state && (state.dueAt === 0 || state.dueAt <= now) && !batchLearnedRef.current.has(wordKey(w));
+    });
+    // 2) 新词（从未学过），排除本批刚学过的（新词首次答完即入 learnedIds，天然不会再出现，但防御性排除）
     const fresh = words.filter(w => {
       const key = wordKey(w);
-      return !learnedIds.has(key) && !learnedIds.has(w.id);
+      return !learned.has(key) && !learned.has(w.id) && !batchLearnedRef.current.has(key);
     });
-    const session = sample(fresh, sessionSize);
-    if (session.length === 0) return;
-    setStudyQueue(session);
-    setStudySource('newWord'); // 学完新词后回首页
+    // 到期优先，不足补新，仍不足给全部
+    const pool = due.concat(fresh);
+    if (pool.length === 0) {
+      alert('都已经学过并且全部消化了，没有更多可学习的词，去其他学段看看吧');
+      return;
+    }
+    const batch = pool.slice(0, sessionSize);
+    // 预统计本批：学习前已有 SRS 记录 = 复习巩固，否则 = 新学
+    enteringBatchRef.current = true;
+    const reviewed = batch.filter(w => srsMap[wordKey(w)] ?? srsMap[w.id]).length;
+    setBatchResult(null);
+    setStudyQueue(batch);
+    setStudySource('batch');
     setView('study');
-  }, [words, learnedIds]);
+    // 完成页统计在 onGoHome 拦截时读取 batchStatisticsRef
+    batchStatsRef.current = { reviewed, newWords: batch.length - reviewed };
+  }, [words, learnedIds, srsMap, sessionSize]);
 
   // 单元闯关 - 接收 units/cards 队列
   const startUnit = useCallback((queue: Word[]) => {
@@ -428,10 +438,11 @@ export default function App() {
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-slate-50 text-slate-900 font-sans flex overflow-hidden">
-        {/* 侧边栏（专注模式下隐藏） */}
+        {/* 侧边栏：专注模式下不渲染（hidden 类会被 md:flex 覆盖，导致 fixed 侧栏压住主内容） */}
+        {!focusMode && (
         <aside
           className={`hidden md:flex flex-col bg-white border-r border-slate-200 fixed h-full z-40 transition-all duration-300 ease-in-out ${
-            focusMode ? 'hidden' : isSidebarOpen ? 'w-64 translate-x-0' : 'w-0 -translate-x-full overflow-hidden'
+            isSidebarOpen ? 'w-64 translate-x-0' : 'w-0 -translate-x-full overflow-hidden'
           }`}
         >
           <div className="p-6 pt-safe border-b border-slate-100 flex items-center justify-between">
@@ -453,7 +464,7 @@ export default function App() {
 
           <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
             <NavButton active={view === 'dashboard'} onClick={() => setView('dashboard')} icon={<IconHome />} label="首页" />
-            <NavButton active={view === 'study'} onClick={startStudy} icon={<IconBook />} label={`开始学习${summary.dueCount > 0 ? ` (${summary.dueCount})` : ''}`} />
+            <NavButton active={view === 'study'} onClick={startBatch} icon={<IconBook />} label="开始学习" />
             <NavButton active={view === 'units'} onClick={() => setView('units')} icon={<IconGrid />} label={`闯关 (${summary.unitsCompleted}/${summary.unitsTotal})`} />
             <NavButton active={view === 'mistakes'} onClick={() => setView('mistakes')} icon={<IconAlertCircle />} label={`易错词 (${mistakeIds.length})`} />
             <NavButton active={view === 'confusions'} onClick={() => setView('confusions')} icon={<IconQuestion />} label={`易混淆词 (${confusionCount})`} />
@@ -489,9 +500,10 @@ export default function App() {
             </div>
           </div>
         </aside>
+        )}
 
         {/* 主内容区 */}
-        <div className={`flex-1 flex flex-col transition-all duration-300 ${focusMode ? 'md:ml-0' : isSidebarOpen ? 'md:ml-64' : 'md:ml-0'}`}>
+        <div className={`flex-1 min-w-0 flex flex-col transition-all duration-300 ${focusMode ? 'md:ml-0' : isSidebarOpen ? 'md:ml-64' : 'md:ml-0'}`}>
           <header className={`bg-white shadow-sm shrink-0 z-30 relative pt-safe ${focusMode ? 'md:opacity-30 md:hover:opacity-100 transition-opacity' : ''}`}>
             <div className="max-w-6xl mx-auto px-4 h-14 sm:h-16 flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -553,14 +565,9 @@ export default function App() {
                   streak={streak.current}
                   confusionCount={confusionCount}
                   stage={stage}
-                  todayInitialDue={todayInitialDue}
                   todayReviewed={todayReviewed}
-                  todayHasActivity={todayHasActivity}
                   todayNewLearned={todayNewLearned}
-                  accuracy={summary.accuracy}
-                  onStartStudy={startStudy}
-                  onViewTodayReviewed={() => setView('todayReviewed')}
-                  onStartNewWord={startNewWord}
+                  onStartBatch={startBatch}
                   onStartQuiz={openQuizEntry}
                   onViewUnits={() => setView('units')}
                   onViewMistakes={() => setView('mistakes')}
@@ -607,6 +614,16 @@ export default function App() {
                     }
                   }}
                   onGoHome={() => {
+                    // 本批完成：记录已学词(供"再来一批"排除)，弹出完成页
+                    if (studySource === 'batch') {
+                      // 把本批实际学过的词 key 记入排除集合
+                      studyQueue.forEach(w => batchLearnedRef.current.add(wordKey(w)));
+                      // 已完成 = 离开学习模式；完成页由 batchResult 驱动
+                      setBatchResult(batchStatsRef.current);
+                      setStudyQueue([]);
+                      setView('batchComplete');
+                      return;
+                    }
                     // 同步清队列，避免 setView 后还残留旧 studyQueue 引发的空白
                     setStudyQueue([]);
                     if (studySource === 'confusion') {
@@ -618,6 +635,22 @@ export default function App() {
                     } else {
                       setView('dashboard');
                     }
+                  }}
+                />
+              )}
+
+              {view === 'batchComplete' && batchResult && (
+                <BatchCompleteView
+                  reviewed={batchResult.reviewed}
+                  newWords={batchResult.newWords}
+                  onMore={() => {
+                    // 清掉结果态，重新取批
+                    setBatchResult(null);
+                    startBatch();
+                  }}
+                  onGoHome={() => {
+                    setBatchResult(null);
+                    setView('dashboard');
                   }}
                 />
               )}
@@ -804,7 +837,7 @@ export default function App() {
               <IconHome />
               <span>首页</span>
             </MobileNavButton>
-            <MobileNavButton active={view === 'study'} onClick={startStudy}>
+            <MobileNavButton active={view === 'study'} onClick={startBatch}>
               <IconBook />
               <span>学习</span>
             </MobileNavButton>

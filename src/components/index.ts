@@ -16,5 +16,6 @@ export { ConfusionView } from './ConfusionView';
 export { SettingsView } from './SettingsView';
 export { LearnedView } from './LearnedView';
 export { TodayReviewedView } from './TodayReviewedView';
+export { BatchCompleteView } from './BatchCompleteView';
 export { ErrorBoundary } from './ErrorBoundary';
 export * from './Icons';

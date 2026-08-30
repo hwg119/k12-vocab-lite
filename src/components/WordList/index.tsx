@@ -1,6 +1,7 @@
 import React, { memo, useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { Word } from '../../types';
 import { IconSearch, IconCheck } from '../Icons';
+import { WordImage } from '../WordImage';
 import { useDebounce, useDebouncedCallback } from '../../hooks';
 import { wordKey } from '../../utils';
 
@@ -291,9 +292,17 @@ const WordListRow = memo(
         className="p-3 sm:p-4 hover:bg-slate-50 flex items-start justify-between gap-2 sm:gap-4 group transition-colors duration-200"
       >
         <div className="flex-1 min-w-0 overflow-hidden">
-          <div className="flex items-baseline gap-1.5 sm:gap-2 flex-wrap">
-            <span className="font-bold text-slate-800 text-base sm:text-lg break-all">{word.english}</span>
-            <span className="font-mono text-slate-400 text-xs sm:text-sm shrink-0">{word.phonetic}</span>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex items-baseline gap-1.5 sm:gap-2 flex-wrap min-w-0">
+              <span className="font-bold text-slate-800 text-base sm:text-lg break-all">{word.english}</span>
+              <span className="font-mono text-slate-400 text-xs sm:text-sm shrink-0">{word.phonetic}</span>
+            </div>
+            <WordImage
+              english={word.english}
+              alt={word.english}
+              className="w-10 h-10 sm:w-11 sm:h-11 rounded-lg bg-slate-100 shrink-0"
+              zoomable={false}
+            />
           </div>
           <div className="text-sm text-slate-600 mt-1 leading-relaxed break-words">{word.chinese}</div>
           {word.mnemonic && (

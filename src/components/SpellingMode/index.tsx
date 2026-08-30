@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect, useMemo, useRef, Fragment } fr
 import { Word, ReviewFeedback } from '../../types';
 import { IconArrowLeft, IconCheck, IconX } from '../Icons';
 import { splitSyllables } from '../../utils/syllables';
+import { WordImage } from '../WordImage';
 
 interface SpellingModeProps {
   studyQueue: Word[];
@@ -197,6 +198,11 @@ export const SpellingMode: React.FC<SpellingModeProps> = ({
         }`}
       >
         <div className="p-7 text-center">
+          <WordImage
+            english={currentWord.english}
+            alt={currentWord.english}
+            className="w-24 h-24 sm:w-28 sm:h-28 mx-auto mb-4"
+          />
           <div className="text-2xl font-bold text-slate-800 leading-relaxed break-words whitespace-pre-wrap">
             {currentWord.chinese}
           </div>

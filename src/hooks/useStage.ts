@@ -284,7 +284,8 @@ export function useStage(): UseStageReturn {
 
   // 今日复习进度
   const todayInitialDue = todaySnapshot.date === todayKey ? todaySnapshot.count : summary.dueCount;
-  const todayReviewed = Math.max(0, todayInitialDue - summary.dueCount);
+  // 今日已复习数：基于今日已复习词列表长度（累加器），而非减法 → 不会因学新词导致进度倒退
+  const todayReviewed = todayReviewedSnapshot.date === todayKey ? todayReviewedSnapshot.ids.length : 0;
   // 今日新学数：跨日期自动归零
   const todayNewLearned = todayNewSnapshot.date === todayKey ? todayNewSnapshot.count : 0;
   // 今日已复习单词列表：跨日期自动归零

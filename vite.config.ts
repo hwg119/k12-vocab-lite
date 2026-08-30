@@ -38,7 +38,9 @@ export default defineConfig({
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        // 单词配图只用 webp（体积小 68%），跳过 word-images/*.png 源图避免重复打包
+        globPatterns: ['**/*.{js,css,html,ico,svg,webp}', 'pwa-*.png', 'apple-touch-icon.png', 'favicon.ico'],
+        globIgnores: ['**/word-images/*.png'],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
