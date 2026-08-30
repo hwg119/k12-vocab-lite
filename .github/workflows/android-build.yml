@@ -60,6 +60,18 @@ jobs:
           KEY_PW: ${{ secrets.KEYSTORE_KEY_PASSWORD }}
         run: |
           echo "$KEYSTORE_B64" | base64 -d > android/app/k12-vocab-release.jks
+          # 将 JKS 转为 PKCS12 格式，兼容 JDK 21+ 的 stricter JKS 处理
+          keytool -importkeystore \
+            -srckeystore android/app/k12-vocab-release.jks \
+            -destkeystore android/app/k12-vocab-release.jks \
+            -deststoretype pkcs12 \
+            -srcstorepass "$STORE_PW" \
+            -deststorepass "$STORE_PW" \
+            -srcalias "$ALIAS" \
+            -destalias "$ALIAS" \
+            -srckeypass "$KEY_PW" \
+            -destkeypass "$KEY_PW" \
+            -noprompt
           cat > android/keystore.properties <<EOF
           storeFile=k12-vocab-release.jks
           storePassword=$STORE_PW
