@@ -9,6 +9,7 @@ import {
   generateSeed,
   buildChallengeQuestions,
   wordKey,
+  shuffleArray,
 } from './utils';
 import { useStage, useLocalStorage } from './hooks';
 import { useEdgeSwipe } from './hooks/useEdgeSwipe';
@@ -273,7 +274,8 @@ export default function App() {
       return !learned.has(key) && !learned.has(w.id) && !batchLearnedRef.current.has(key);
     });
     // 到期优先，不足补新，仍不足给全部
-    const pool = due.concat(fresh);
+    // 段内打散：到期词 / 新词各自分组随机，避免连续简单词或连续生词
+    const pool = shuffleArray(due).concat(shuffleArray(fresh));
     if (pool.length === 0) {
       alert('都已经学过并且全部消化了，没有更多可学习的词，去其他学段看看吧');
       return;
