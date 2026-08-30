@@ -4,10 +4,75 @@ import { matchWordKey, graduationThreshold } from '../../utils';
 import { IconArrowLeft, IconTrash } from '../Icons';
 import { WordImage } from '../WordImage';
 
+const DAY = 24 * 60 * 60 * 1000;
+
+/**
+ * 综合"薄弱分数"，越高越靠前：
+ *   w = wrongCount（错次权重 ×2）
+ *   r = "最近 30 天是否被复习过"权重：
+ *        最近 7 天复习过 → +3（最近在连续错，最当前）
+ *        7~30 天前复习过 → +2
+ *        30 天前/未复习过 → +1（陈年错词：权重低，照顾优先级）
+ *   s = 拼写维度待练权重：
+ *        拼写错过且未拼写达标 → +2（拼写也是现时瓶颈）
+ */
+function weaknessScore(item: {
+  wrong: number;
+  lastReviewedAt: number;
+  spWrong: number;
+  spRep: number;
+}): number {
+  const w = item.wrong * 2;
+  const age = item.lastReviewedAt > 0 ? Date.now() - item.lastReviewedAt : Infinity;
+  const r = age <= 7 * DAY ? 3 : age <= 30 * DAY ? 2 : 1;
+  const s = item.spWrong > 0 && item.spRep < graduationThreshold(item.spWrong) ? 2 : 0;
+  return w + r + s;
+}
+
+/**
+ * 点式进度指示（最多 3 个点，超出取后段）。
+ * - 完成的点用主色填充
+ * - 当前的点用环形表示
+ * - 未到的点用浅灰
+ */
+function ProgressDots({
+  progress,
+  total,
+  color,
+}: {
+  progress: number;
+  total: number;
+  color: 'emerald' | 'amber' | 'indigo';
+}) {
+  const n = Math.min(total, 3);
+  const filled = Math.min(progress, n);
+  const palette: Record<typeof color, { bg: string; ring: string; empty: string }> = {
+    emerald: { bg: 'bg-emerald-500', ring: 'ring-emerald-400', empty: 'bg-slate-200' },
+    amber: { bg: 'bg-amber-500', ring: 'ring-amber-400', empty: 'bg-slate-200' },
+    indigo: { bg: 'bg-indigo-500', ring: 'ring-indigo-400', empty: 'bg-slate-200' },
+  };
+  const c = palette[color];
+  return (
+    <div className="flex items-center gap-1">
+      {Array.from({ length: n }, (_, i) => (
+        <span
+          key={i}
+          className={
+            'w-1.5 h-1.5 rounded-full ' +
+            (i < filled ? c.bg : i === filled && progress < total ? `bg-white ring-2 ${c.ring}` : c.empty)
+          }
+        />
+      ))}
+    </div>
+  );
+}
+
 interface MistakesViewProps {
   words: Word[];
   mistakeIds: string[];
   srsMap: Record<string, SrsState>;
+  /** 已攻克错词的累计计数（毕业沉淀） */
+  graduatedCount?: number;
   onGoHome: () => void;
   /** 进入专项复习 - 直接复用 StudyMode 的队列模式 */
   onStartReview: (queue: Word[]) => void;
@@ -29,6 +94,7 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
   words,
   mistakeIds,
   srsMap,
+  graduatedCount = 0,
   onGoHome,
   onStartReview,
   onStartSpelling,
@@ -57,6 +123,7 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
         wrong: srs?.wrongCount ?? 0,
         repetitions: srs?.repetitions ?? 0,
         dueAt: srs?.dueAt ?? 0,
+        lastReviewedAt: srs?.lastReviewedAt ?? 0,
         spWrong: sp?.wrongCount ?? 0,
         spRep: sp?.repetitions ?? 0,
         spDueAt: sp?.dueAt ?? 0,
@@ -70,6 +137,7 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
         wrong: number;
         repetitions: number;
         dueAt: number;
+        lastReviewedAt: number;
         spWrong: number;
         spRep: number;
         spDueAt: number;
@@ -77,8 +145,17 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
         idx: number;
       } => x !== null,
     )
-    // 主排序：错次多 → 少；同错次：先加入 mistakeIds 的在前
-    .sort((a, b) => (b.wrong - a.wrong) || (a.idx - b.idx));
+    // 薄弱优先排序：
+    //   1) 错次权重 w（错得越多越优先）
+    //   2) 最近连续错权重 r（30 天内最近一次复习越近越优先，未复习的词视为最薄弱）
+    //   3) 拼写维度待练权重 s（spWrong>0 且未拼写达标 = 现时拼写瓶颈）
+    // 综合分 = w*2 + r + s
+    .sort((a, b) => {
+      const scoreA = weaknessScore(a);
+      const scoreB = weaknessScore(b);
+      if (scoreA !== scoreB) return scoreB - scoreA;
+      return a.idx - b.idx;
+    });
 
   const total = sortedWords.length;
   const now = Date.now();
@@ -119,6 +196,11 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
             <p className="text-slate-500 text-sm">
               回答时标记"模糊"或"不认识"的词会自动收纳到这里，便于专项攻克。
             </p>
+            {graduatedCount > 0 ? (
+              <p className="mt-4 text-sm text-emerald-600 font-medium">
+                🏆 你已攻克 <span className="font-bold">{graduatedCount}</span> 个错词
+              </p>
+            ) : null}
           </div>
 
           {/* 清空错词操作区（始终可见，让用户能主动清理残留脏数据） */}
@@ -163,6 +245,11 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
               <h3 className="text-4xl font-bold">{total}</h3>
               <span className="text-rose-400 text-sm">words to tackle</span>
             </div>
+            {graduatedCount > 0 ? (
+              <p className="mt-1 text-xs text-emerald-700 font-medium">
+                🏆 已攻克 <span className="font-bold">{graduatedCount}</span> 个错词
+              </p>
+            ) : null}
             {dueCount > 0 ? (
               <button
                 onClick={() => onStartReview(dueQueue)}
@@ -173,7 +260,7 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
             ) : null}
             <button
               onClick={() => onStartReview(reviewableQueue)}
-              className="mt-2 w-full py-2 text-rose-500 hover:text-rose-700 text-sm underline underline-offset-4 transition-colors"
+              className="mt-2 w-full py-2.5 bg-white text-rose-600 font-semibold rounded-lg border border-rose-200 hover:bg-rose-50 transition-colors"
             >
               复习全部 {total} 个错词
             </button>
@@ -187,9 +274,9 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
             ) : null}
             <button
               onClick={() => onStartSpelling(reviewableQueue)}
-              className="mt-2 w-full py-2 text-rose-500 hover:text-rose-700 text-sm underline underline-offset-4 transition-colors"
+              className="mt-2 w-full py-2.5 bg-white text-rose-600 font-semibold rounded-lg border border-rose-200 hover:bg-rose-50 transition-colors"
             >
-              拼写训练全部 {total} 个（看中文 · 按音节点选字母）
+              ✍️ 拼写训练全部 {total} 个
             </button>
           </div>
 
@@ -258,27 +345,45 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
                       ×{wrong}
                     </span>
                     {threshold > 1 ? (
+                      <div className="flex flex-col items-end gap-0.5">
+                        <div className="flex items-center gap-1.5">
+                          <ProgressDots progress={progress} total={threshold} color={progress >= threshold ? 'emerald' : 'amber'} />
+                          <span
+                            className={
+                              'inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium rounded-full whitespace-nowrap ' +
+                              (progress >= threshold
+                                ? 'text-emerald-600 bg-emerald-50 border border-emerald-200'
+                                : 'text-amber-600 bg-amber-50 border border-amber-200')
+                            }
+                          >
+                            ⚑ 巩固 {progress}/{threshold}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-slate-400 leading-tight">
+                          {progress >= threshold
+                            ? '已满足 · 再答对即可出本'
+                            : `再答对 ${threshold - progress} 次出本`}
+                        </span>
+                      </div>
+                    ) : null}
+                    <div className="flex items-center gap-1.5">
+                      <ProgressDots progress={spProgress} total={spThreshold} color={spProgress >= spThreshold ? 'emerald' : 'indigo'} />
                       <span
                         className={
                           'inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium rounded-full whitespace-nowrap ' +
-                          (progress >= threshold
+                          (spProgress >= spThreshold
                             ? 'text-emerald-600 bg-emerald-50 border border-emerald-200'
-                            : 'text-amber-600 bg-amber-50 border border-amber-200')
+                            : 'text-indigo-600 bg-indigo-50 border border-indigo-200')
                         }
                       >
-                        ⚑ 巩固 {progress}/{threshold}
+                        ✎ 拼写 {spProgress}/{spThreshold}
+                      </span>
+                    </div>
+                    {spProgress < spThreshold ? (
+                      <span className="text-[10px] text-slate-400 leading-tight">
+                        拼写再对 {spThreshold - spProgress} 次
                       </span>
                     ) : null}
-                    <span
-                      className={
-                        'inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium rounded-full whitespace-nowrap ' +
-                        (spProgress >= spThreshold
-                          ? 'text-emerald-600 bg-emerald-50 border border-emerald-200'
-                          : 'text-indigo-600 bg-indigo-50 border border-indigo-200')
-                      }
-                    >
-                      ✎ 拼写 {spProgress}/{spThreshold}
-                    </span>
                   </div>
                 </li>
               );

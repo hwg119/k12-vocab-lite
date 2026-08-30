@@ -94,6 +94,8 @@ export interface UseStageReturn {
   todayHasActivity: boolean;
   /** 今日新学词数（每天自动归零） */
   todayNewLearned: number;
+  /** 已攻克错词的累计计数（毕业沉淀，按学段独立） */
+  graduatedCount: number;
 }
 
 export function useStage(): UseStageReturn {
@@ -109,6 +111,11 @@ export function useStage(): UseStageReturn {
   const [mistakeIds, setMistakeIds] = useLocalStorage<string[]>(
     StorageKeys.mistakes(stage),
     [],
+  );
+  // 已攻克错词的累计计数（毕业沉淀，按学段独立）
+  const [graduatedCount, setGraduatedCount] = useLocalStorage<number>(
+    StorageKeys.graduated(stage),
+    0,
   );
   const [studyDays, setStudyDays] = useLocalStorage<StudyDayRecord[]>(
     StorageKeys.studyDays,
@@ -427,6 +434,7 @@ export function useStage(): UseStageReturn {
         graduated = shouldGraduateFromMistakes(next);
         if (graduated) {
           setMistakeIds(prev => prev.filter(x => x !== key && x !== legacyId));
+          setGraduatedCount(prev => prev + 1);
         }
       } else {
         setMistakeIds(prev => {
@@ -449,7 +457,7 @@ export function useStage(): UseStageReturn {
       });
       return graduated;
     },
-    [setLearnedIds, setSrsMap, setMistakeIds, setStudyDays, setTodayNewSnapshot, setTodayReviewedSnapshot, learnedIds, words, todayKey, srsMap],
+    [setLearnedIds, setSrsMap, setMistakeIds, setGraduatedCount, setStudyDays, setTodayNewSnapshot, setTodayReviewedSnapshot, learnedIds, words, todayKey, srsMap],
   );
 
   /**
@@ -513,7 +521,8 @@ export function useStage(): UseStageReturn {
     setLearnedIds(new Set());
     setSrsMap({});
     setMistakeIds([]);
-  }, [setLearnedIds, setSrsMap, setMistakeIds]);
+    setGraduatedCount(0);
+  }, [setLearnedIds, setSrsMap, setMistakeIds, setGraduatedCount]);
 
   /** 仅清空错词本（保留 learnedIds、srsMap、studyDays） */
   const clearMistakes = useCallback(() => {
@@ -579,5 +588,6 @@ export function useStage(): UseStageReturn {
     todayReviewedIds,
     todayHasActivity,
     todayNewLearned,
+    graduatedCount,
   };
 }

@@ -177,6 +177,8 @@ export const StorageKeys = {
   srs: (stage: Stage) => `vocab-${stage}-srs`,
   /** 错词 ID 列表（专项复习） */
   mistakes: (stage: Stage) => `vocab-${stage}-mistakes`,
+  /** 已攻克错词的累计计数（毕业沉淀） */
+  graduated: (stage: Stage) => `vocab-${stage}-graduated`,
   /** 勋章成就 */
   achievements: (stage: Stage) => `vocab-${stage}-achievements`,
   /** 闯关单元 */

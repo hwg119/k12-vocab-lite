@@ -21,6 +21,8 @@ interface DashboardProps {
   /** 从未学过的词数（用于「开始学习」按钮） */
   newWordCount: number;
   mistakeCount: number;
+  /** 错词本中"今日到期"的错词数（用于首页联动） */
+  mistakeDueCount?: number;
   unitsCompleted: number;
   unitsTotal: number;
   achievementsCount: number;
@@ -75,6 +77,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   dueCount,
   newWordCount,
   mistakeCount,
+  mistakeDueCount = 0,
   unitsCompleted,
   unitsTotal,
   achievementsCount,
@@ -252,7 +255,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <ActionCard color={unitsTotal > 0 && unitsCompleted === unitsTotal ? 'amber' : 'indigo'}
               icon={<IconGrid />} title="闯关模式" subtitle={`${unitsCompleted}/${unitsTotal} 单元`} onClick={onViewUnits} />
             <ActionCard color={mistakeCount > 0 ? 'rose' : 'slate'} icon={<IconAlertCircle />}
-              title="错词本" subtitle={mistakeCount > 0 ? `已收录 ${mistakeCount} 个` : '保持良好'} onClick={onViewMistakes} />
+              title="错词本"
+              subtitle={
+                mistakeDueCount > 0
+                  ? `${mistakeDueCount} 个该巩固了 · 共 ${mistakeCount} 个`
+                  : mistakeCount > 0
+                  ? `已收录 ${mistakeCount} 个 · 暂无到期`
+                  : '保持良好'
+              }
+              onClick={onViewMistakes} />
             <ActionCard color={confusionCount > 0 ? 'amber' : 'slate'} icon={<IconQuestion />}
               title="易混词对比" subtitle={confusionCount > 0 ? `${confusionCount} 组配对` : '暂无配对'} onClick={onViewConfusions} />
             <ActionCard color="yellow" icon={<IconTrophy />}

@@ -85,12 +85,24 @@ export default function App() {
     todayReviewed,
     todayReviewedIds,
     todayNewLearned,
+    graduatedCount,
   } = useStage();
 
   // 近 7 日学习摘要（用于周报柱状图）
   const recentDays = useMemo(() => buildDailySummaries(studyDays, 7), [studyDays]);
   // 当前学段易混词配对数量
   const confusionCount = useMemo(() => groupConfusionPairs(words).length, [words]);
+  // 错词本"今日到期"数量（首页联动 + 错词本顶卡用）
+  const mistakeDueCount = useMemo(() => {
+    const now = Date.now();
+    let n = 0;
+    for (const id of mistakeIds) {
+      const srs = srsMap[id];
+      if (!srs) { n += 1; continue; }
+      if (srs.dueAt === 0 || srs.dueAt <= now) n += 1;
+    }
+    return n;
+  }, [mistakeIds, srsMap]);
 
   const [view, setViewRaw] = useState<AppView>('dashboard');
   // 视图历史栈（用于边缘滑动返回 / 浏览器后退 / Android 返回键）
@@ -560,6 +572,7 @@ export default function App() {
                   dueCount={summary.dueCount}
                   newWordCount={summary.newWordCount}
                   mistakeCount={mistakeIds.length}
+                  mistakeDueCount={mistakeDueCount}
                   unitsCompleted={summary.unitsCompleted}
                   unitsTotal={summary.unitsTotal}
                   achievementsCount={achievements.length}
@@ -799,6 +812,7 @@ export default function App() {
                   words={words}
                   mistakeIds={mistakeIds}
                   srsMap={srsMap}
+                  graduatedCount={graduatedCount}
                   onGoHome={() => setView('dashboard')}
                   onStartReview={startMistakesReview}
                   onStartSpelling={startSpelling}
