@@ -1,4 +1,4 @@
-import { StudyDayRecord } from '../types';
+import { StudyDayRecord, ReviewFeedback } from '../types';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -16,7 +16,7 @@ function dayKey(ts: number): number {
  */
 export function recordActivity(
   records: StudyDayRecord[],
-  feedback: 'know' | 'vague' | 'unknown' | 'quizAnswer',
+  feedback: ReviewFeedback | 'quizAnswer',
   isCorrect: boolean,
   now: number = Date.now(),
 ): StudyDayRecord[] {

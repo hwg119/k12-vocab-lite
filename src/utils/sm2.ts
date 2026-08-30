@@ -2,16 +2,14 @@ import { ReviewFeedback, SrsState, SpellingDim } from '../types';
 import { shuffleArray } from './array';
 
 /**
- * 间隔重复算法（SM2 简化版 - 三档反馈）
+ * 间隔重复算法（SM2 简化版 - 二档反馈）
  *
  * 反馈语义：
  *   know    → 完整 SM2 进展，EF 微增
- *   vague   → 重置进度 + EF 小幅扣减 + 错误次数 +1
- *   unknown → 重置进度 + EF 大幅扣减 + 错误次数 +1
+ *   unknown → 重置进度 + EF 扣减 + 错误次数 +1
  *
  * 设计要点：
- *   - 三档比五档更易于高中生判断
- *   - 「模糊」「不认识」均触发重置，符合艾宾浩斯原理
+ *   - 二档减少学生"模糊 vs 不认识"的纠结
  *   - 间隔起步 1 天，第二次复习 6 天，之后 round(prev_interval * EF)
  */
 
@@ -22,7 +20,6 @@ const DEFAULT_EASE = 2.5;
 /** 反馈信号 → SM2 质量评分 */
 export const FEEDBACK_QUALITY: Record<ReviewFeedback, number> = {
   know: 5,
-  vague: 3,
   unknown: 1,
 };
 
@@ -56,14 +53,9 @@ export function applyReview(
     else if (repetitions === 1) intervalDays = 6;
     else intervalDays = Math.max(1, Math.round(intervalDays * easeFactor));
     repetitions += 1;
-  } else if (feedback === 'vague') {
-    easeFactor = Math.max(MIN_EASE, easeFactor - 0.15);
-    repetitions = 0;
-    intervalDays = 1;
-    wrongCount += 1;
   } else {
-    // 'unknown' - 大幅扣减
-    easeFactor = Math.max(MIN_EASE, easeFactor - 0.30);
+    // 'unknown' - 答错，重置进度并扣 EF
+    easeFactor = Math.max(MIN_EASE, easeFactor - 0.25);
     repetitions = 0;
     intervalDays = 1;
     wrongCount += 1;
@@ -135,7 +127,7 @@ export function graduationThreshold(wrongCount: number): number {
 
 /**
  * 判断错词是否可出本：连续答对数已达该错次对应的阈值。
- * repetitions 即 SM2 中的连续答对数——每次 know 递增、vague/unknown 重置为 0，
+ * repetitions 即 SM2 中的连续答对数——每次 know 递增、unknown 重置为 0，
  * 因此天然反映"间隔复习中连续答对"的次数。
  */
 export function shouldGraduateFromMistakes(state: SrsState): boolean {

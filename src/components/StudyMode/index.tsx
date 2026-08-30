@@ -9,21 +9,20 @@ interface StudyModeProps {
   source?: 'default' | 'review' | 'mistakes' | 'unit' | 'confusion' | 'newWord' | 'batch';
   /** 错词"毕业"庆祝提示（专项复习连续答对达标时由 App 传入） */
   graduatedNotice?: { english: string; key: number } | null;
-  /** 用户提交一档反馈（know / vague / unknown）
-   *  - know   → mastered
-   *  - vague  → mistake+
-   *  - unknown → mistake+ 大幅降级
+  /** 用户提交二档反馈（know / unknown）
+   *  - know    → mastered
+   *  - unknown → mistake+ 降级
    */
   onSubmit: (id: string, feedback: ReviewFeedback) => void;
   onGoHome: () => void;
 }
 
 /**
- * 学习模式 v2 - 三档反馈
+ * 学习模式 v2 - 二档反馈
  *
- * 替换原来的二按钮（Review Later / Mastered）为三档反馈：
+ * 替换原来的三档为二档：移除"模糊"档（与"不认识"在 SRS/错词本/复习路径上实际等价），
+ * 减少学生的决策疲劳。
  *   - Know（认识）→ 绿色 solid
- *   - Vague（模糊）→ 黄色 outline
  *   - Unknown（不认识）→ 红色 outline
  *
  * 反馈会自动驱动 SM2 算法与错词本
@@ -165,21 +164,22 @@ export const StudyMode: React.FC<StudyModeProps> = ({
         className="w-full max-w-md bg-white rounded-3xl shadow-xl shadow-slate-200/50 relative cursor-pointer hover:shadow-2xl hover:shadow-slate-200/60 transition-all duration-300 mb-4"
         onClick={() => setIsFlipped(!isFlipped)}
       >
-        <div className="absolute top-5 right-5 z-10">
+        <div className="absolute top-3 right-3 z-10">
           {learnedIds.has(currentWord.id) ? (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-600 text-xs font-medium border border-emerald-100">
-              <IconCheck className="w-3.5 h-3.5" />
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50/80 backdrop-blur-sm text-emerald-600 text-[11px] font-medium border border-emerald-100/80">
+              <IconCheck className="w-3 h-3" />
               Mastered
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 text-amber-600 text-xs font-medium border border-amber-100">
-              <IconClock className="w-3.5 h-3.5" />
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50/80 backdrop-blur-sm text-amber-600 text-[11px] font-medium border border-amber-100/80">
+              <IconClock className="w-3 h-3" />
               Reviewing
             </span>
           )}
         </div>
 
         <div className="flex flex-col items-center justify-start py-8 px-10 text-center h-[400px] overflow-y-auto">
+          {/* 单行为先：单词尽可能大，长单词允许盖住右上角徽（徽为辅） */}
           <div className="flex items-center gap-4 mb-6 w-full justify-center">
             <div>
               <h2 className="text-4xl sm:text-5xl font-bold text-slate-900 break-words animate-fade-in">
@@ -222,8 +222,8 @@ export const StudyMode: React.FC<StudyModeProps> = ({
         </div>
       </div>
 
-      {/* 三档反馈按钮 */}
-      <div className="grid grid-cols-3 gap-2 w-full max-w-md">
+      {/* 二档反馈按钮（认识/不认识） */}
+      <div className="grid grid-cols-2 gap-3 w-full max-w-md">
         <button
           onClick={() => submitAndAdvance('unknown')}
           className="py-3 px-3 rounded-xl font-semibold bg-white border-2 border-rose-200 text-rose-600 hover:bg-rose-50 hover:border-rose-300 transition-all text-sm"
@@ -231,15 +231,6 @@ export const StudyMode: React.FC<StudyModeProps> = ({
           <div className="flex flex-col items-center gap-0.5">
             <IconQuestion className="w-4 h-4" />
             <span>不认识</span>
-          </div>
-        </button>
-        <button
-          onClick={() => submitAndAdvance('vague')}
-          className="py-3 px-3 rounded-xl font-semibold bg-white border-2 border-amber-200 text-amber-600 hover:bg-amber-50 hover:border-amber-300 transition-all text-sm"
-        >
-          <div className="flex flex-col items-center gap-0.5">
-            <IconClock className="w-4 h-4" />
-            <span>模糊</span>
           </div>
         </button>
         <button

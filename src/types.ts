@@ -13,8 +13,13 @@ export type Stage = 'primary' | 'junior' | 'senior';
 /** 难度分级：1(易) → 5(难)，用于闯关/排序 */
 export type Difficulty = 1 | 2 | 3 | 4 | 5;
 
-/** 学习模式反馈信号 - SM2 算法三档映射 */
-export type ReviewFeedback = 'know' | 'vague' | 'unknown';
+/**
+ * 学习模式反馈信号 - 二档映射。
+ * 历史曾有 'vague'（模糊）/'unknown'（不认识）三档，但两档在 SRS、错词本、复习路径上
+ * 实际等价（仅 EF 微调，下一次 dueAt 都是 1 天），给学生带来"决策疲劳"却无差异化收益。
+ * 现统一为 know（认识）/ unknown（不认识）二档。
+ */
+export type ReviewFeedback = 'know' | 'unknown';
 
 /**
  * 已攻克错词记录（错词毕业时沉淀）。
