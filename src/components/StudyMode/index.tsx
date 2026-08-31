@@ -2,6 +2,7 @@ import React, { useState, useCallback, useRef } from 'react';
 import { Word, ReviewFeedback } from '../../types';
 import { IconArrowLeft, IconArrowRight, IconCheck, IconClock, IconBookOpen, IconQuestion } from '../Icons';
 import { WordImage } from '../WordImage';
+import { WordAudio } from '../WordAudio';
 
 interface StudyModeProps {
   studyQueue: Word[];
@@ -164,11 +165,14 @@ export const StudyMode: React.FC<StudyModeProps> = ({
                 {currentWord.phonetic}
               </p>
             </div>
-            <WordImage
-              english={currentWord.english}
-              alt={currentWord.english}
-              className="w-16 h-16 rounded-xl bg-slate-50 shrink-0"
-            />
+            <div className="flex flex-col items-center gap-1 shrink-0">
+              <WordAudio word={currentWord.english} />
+              <WordImage
+                english={currentWord.english}
+                alt={currentWord.english}
+                className="w-16 h-16 rounded-xl bg-slate-50"
+              />
+            </div>
           </div>
 
           <div className={`w-12 h-px bg-slate-200 mb-8 transition-all duration-300 ${isFlipped ? 'opacity-100' : 'opacity-0'}`}></div>

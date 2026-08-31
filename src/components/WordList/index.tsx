@@ -2,6 +2,7 @@ import React, { memo, useState, useMemo, useRef, useEffect, useCallback } from '
 import { Word } from '../../types';
 import { IconSearch, IconCheck } from '../Icons';
 import { WordImage } from '../WordImage';
+import { WordAudio } from '../WordAudio';
 import { useDebounce, useDebouncedCallback } from '../../hooks';
 import { wordKey } from '../../utils';
 
@@ -297,6 +298,7 @@ const WordListRow = memo(
               <span className="font-bold text-slate-800 text-base sm:text-lg break-all">{word.english}</span>
               <span className="font-mono text-slate-400 text-xs sm:text-sm shrink-0">{word.phonetic}</span>
             </div>
+            <WordAudio word={word.english} />
             <WordImage
               english={word.english}
               alt={word.english}

@@ -65,3 +65,9 @@ docs/
 /test.png
 /test_check_bom.json
 /test_no_bom.json
+
+# 单词发音音频（自动生成的大文件，不提交）
+/public/audio/
+/scripts/words.txt
+/scripts/test_audio/
+/scripts/data.json

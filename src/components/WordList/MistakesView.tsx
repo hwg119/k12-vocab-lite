@@ -4,6 +4,7 @@ import { matchWordKey, graduationThreshold } from '../../utils';
 import { useLocalStorage } from '../../hooks';
 import { IconArrowLeft, IconTrash } from '../Icons';
 import { WordImage } from '../WordImage';
+import { WordAudio } from '../WordAudio';
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -114,12 +115,15 @@ function GraduatedSection({
                 ) : null}
               </div>
               {english ? (
-                <WordImage
-                  english={english}
-                  alt={english}
-                  className="w-10 h-10 rounded-lg bg-slate-100 shrink-0"
-                  zoomable={false}
-                />
+                <>
+                  <WordAudio word={english} />
+                  <WordImage
+                    english={english}
+                    alt={english}
+                    className="w-10 h-10 rounded-lg bg-slate-100 shrink-0"
+                    zoomable={false}
+                  />
+                </>
               ) : null}
             </div>
             <div className="flex flex-col items-end gap-1.5 shrink-0 ml-3">
