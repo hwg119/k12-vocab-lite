@@ -19,7 +19,7 @@ export const WordAudio: React.FC<WordAudioProps> = ({ word, className = '' }) =>
     setLoading(true);
     setError(false);
 
-    const audio = new Audio(`/audio/${encodeURIComponent(word)}.mp3`);
+    const audio = new Audio(`/audio/${encodeURIComponent(word)}.opus`);
     audio.addEventListener('ended', () => { audioRef.current = null; });
     audioRef.current = audio;
 
