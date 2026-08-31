@@ -611,6 +611,7 @@ export default function App() {
                   }}
                   onGoHome={() => {
                     setStudyQueue([]);
+                    setGraduatedNotice(null);
                     setView('mistakes');
                   }}
                 />
@@ -631,6 +632,7 @@ export default function App() {
                     }
                   }}
                   onGoHome={() => {
+                    setGraduatedNotice(null);
                     // 本批完成：记录已学词(供"再来一批"排除)，弹出完成页
                     if (studySource === 'batch') {
                       // 把本批实际学过的词 key 记入排除集合
