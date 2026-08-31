@@ -222,6 +222,12 @@ export default function App() {
   const [studySource, setStudySource] = useState<'default' | 'review' | 'mistakes' | 'unit' | 'confusion' | 'newWord' | 'spelling' | 'batch'>('default');
   // 错词"毕业"庆祝提示（专项复习连续答对达标时弹 toast）
   const [graduatedNotice, setGraduatedNotice] = useState<{ english: string; key: number } | null>(null);
+  // 自动消失：3 秒后清空，防止重入时重复弹
+  useEffect(() => {
+    if (!graduatedNotice) return;
+    const t = setTimeout(() => setGraduatedNotice(null), 3000);
+    return () => clearTimeout(t);
+  }, [graduatedNotice]);
   const [quizQuestions, setQuizQuestions] = useState<ReturnType<typeof generateQuiz>>([]);
   const [quizMode, setQuizMode] = useState<'daily' | 'sprint' | 'challenge'>('daily');
   // 测验重启计数器——作为 QuizMode 的 key，强制重新挂载
@@ -520,6 +526,17 @@ export default function App() {
 
         {/* 主内容区 */}
         <div className={`flex-1 min-w-0 flex flex-col transition-all duration-300 ${focusMode ? 'md:ml-0' : isSidebarOpen ? 'md:ml-64' : 'md:ml-0'}`}>
+          {/* 错词毕业 toast（App 层，3 秒自动消失，不随子组件重装重复弹） */}
+          {graduatedNotice && (
+            <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 animate-fade-in">
+              <div className="flex items-center gap-2 px-5 py-3 bg-emerald-600 text-white rounded-2xl shadow-xl shadow-emerald-300/40">
+                <span className="text-xl">🎉</span>
+                <span className="font-semibold">
+                  已攻克 <span className="font-bold">{graduatedNotice.english}</span>！连续答对达标，移出错词本
+                </span>
+              </div>
+            </div>
+          )}
           <header className={`bg-white shadow-sm shrink-0 z-30 relative pt-safe ${focusMode ? 'md:opacity-30 md:hover:opacity-100 transition-opacity' : ''}`}>
             <div className="max-w-6xl mx-auto px-4 h-14 sm:h-16 flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -601,17 +618,12 @@ export default function App() {
               {view === 'study' && studySource === 'spelling' && (
                 <SpellingMode
                   studyQueue={studyQueue}
-                  graduatedNotice={graduatedNotice}
                   onSubmit={(id, fb) => {
                     const w = words.find(x => x.id === id);
-                    const graduated = submitSpelling(w ?? id, fb);
-                    if (graduated) {
-                      setGraduatedNotice({ english: w?.english ?? id, key: Date.now() });
-                    }
+                    submitSpelling(w ?? id, fb);
                   }}
                   onGoHome={() => {
                     setStudyQueue([]);
-                    setGraduatedNotice(null);
                     setView('mistakes');
                   }}
                 />
@@ -622,7 +634,6 @@ export default function App() {
                   studyQueue={studyQueue}
                   learnedIds={learnedIds}
                   source={studySource}
-                  graduatedNotice={graduatedNotice}
                   onSubmit={(id, fb) => {
                     const w = words.find(x => x.id === id);
                     const graduated = submitFeedback(w ?? id, fb);
@@ -632,7 +643,6 @@ export default function App() {
                     }
                   }}
                   onGoHome={() => {
-                    setGraduatedNotice(null);
                     // 本批完成：记录已学词(供"再来一批"排除)，弹出完成页
                     if (studySource === 'batch') {
                       // 把本批实际学过的词 key 记入排除集合

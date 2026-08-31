@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo, useRef, Fragment } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, Fragment } from 'react';
 import { Word, ReviewFeedback } from '../../types';
 import { IconArrowLeft, IconCheck, IconX } from '../Icons';
 import { splitSyllables } from '../../utils/syllables';
@@ -8,8 +8,6 @@ interface SpellingModeProps {
   studyQueue: Word[];
   /** 拼写正确是否纳入拼写维度毕业（错词拼写训练专用；不触碰词义出本） */
   onSubmit: (id: string, feedback: ReviewFeedback) => void;
-  /** 拼写维度"拼写攻克"庆祝提示（由 App 传入） */
-  graduatedNotice?: { english: string; key: number } | null;
   onGoHome: () => void;
 }
 
@@ -26,7 +24,6 @@ interface SpellingModeProps {
 export const SpellingMode: React.FC<SpellingModeProps> = ({
   studyQueue,
   onSubmit,
-  graduatedNotice,
   onGoHome,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -35,17 +32,6 @@ export const SpellingMode: React.FC<SpellingModeProps> = ({
   // 已被点击的按钮下标
   const [usedIds, setUsedIds] = useState<number[]>([]);
   const [result, setResult] = useState<'idle' | 'correct' | 'failed'>('idle');
-
-  const [graduateToast, setGraduateToast] = useState<{ english: string } | null>(null);
-  const lastNoticeKeyRef = useRef<number>(0);
-  useEffect(() => {
-    if (!graduatedNotice) return;
-    if (graduatedNotice.key === lastNoticeKeyRef.current) return;
-    lastNoticeKeyRef.current = graduatedNotice.key;
-    setGraduateToast({ english: graduatedNotice.english });
-    const t = setTimeout(() => setGraduateToast(null), 2800);
-    return () => clearTimeout(t);
-  }, [graduatedNotice]);
 
   const currentWord = studyQueue[currentIndex];
   const progress = studyQueue.length > 0 ? ((currentIndex + 1) / studyQueue.length) * 100 : 0;
@@ -156,18 +142,6 @@ export const SpellingMode: React.FC<SpellingModeProps> = ({
 
   return (
     <div className="h-full flex flex-col items-center justify-center max-w-2xl mx-auto w-full animate-fade-in px-6">
-      {/* 毕业庆祝 toast */}
-      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50">
-        {graduateToast && (
-          <div className="flex items-center gap-2 px-5 py-3 bg-emerald-600 text-white rounded-2xl shadow-xl shadow-emerald-300/40 animate-fade-in">
-            <span className="text-xl">🎉</span>
-            <span className="font-semibold">
-              已攻克 <span className="font-bold">{graduateToast.english}</span>！拼写拿下
-            </span>
-          </div>
-        )}
-      </div>
-
       {/* 顶部进度 + 返回 */}
       <div className="w-full max-w-md mb-6">
         <div className="flex items-center gap-3 mb-2">
