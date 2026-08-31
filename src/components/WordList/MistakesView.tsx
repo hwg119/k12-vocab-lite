@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Word, SrsState, GraduatedRecord } from '../../types';
 import { matchWordKey, graduationThreshold } from '../../utils';
+import { useLocalStorage } from '../../hooks';
 import { IconArrowLeft, IconTrash } from '../Icons';
 import { WordImage } from '../WordImage';
 
@@ -176,6 +177,15 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
   const [confirming, setConfirming] = useState(false);
   // 顶部 Tab：错词本 vs 已攻克
   const [tab, setTab] = useState<'mistakes' | 'graduated'>('mistakes');
+  // 已攻克提示只显示一次：首次进入有已攻克时显示，之后永久隐藏
+  const [dismissedGraduatedNotice, setDismissedGraduatedNotice] =
+    useLocalStorage('vocab-dismissed-graduated-notice', false);
+  // 首次进入时标记已见，下次不再提示
+  useEffect(() => {
+    if (graduatedCount > 0 && !dismissedGraduatedNotice) {
+      setDismissedGraduatedNotice(true);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   // 提取有效单词 + 错误次数（missing srsState 视为 0 次，但仍在 mistakeIds 中就算"错词"）
   // 支持多种 key 形式：
   //   - wordKey: 'w:english|chinese'
@@ -244,6 +254,19 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
     .filter(s => s.hasSpelling && (s.spDueAt === 0 || s.spDueAt <= now))
     .map(s => s.word);
   const spellingDueCount = spellingDueQueue.length;
+
+  // 拼写优先级队列：优先未拼写过的，再拼写错得多的，最后其他
+  const spellingPriorityQueue = sortedWords
+    .slice()
+    .sort((a, b) => {
+      const aNever = a.spWrong === 0 && a.spRep === 0;
+      const bNever = b.spWrong === 0 && b.spRep === 0;
+      if (aNever && !bNever) return -1;
+      if (!aNever && bNever) return 1;
+      if (a.spWrong !== b.spWrong) return b.spWrong - a.spWrong;
+      return a.idx - b.idx;
+    })
+    .map(s => s.word);
 
   // 已攻克视图：按 wordKey 在当前学段词表中找回 Word 对象（找不到的词也展示 english 文本兜底）
   const graduatedRows = graduatedRecords
@@ -354,7 +377,7 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
               <h3 className="text-4xl font-bold">{total}</h3>
               <span className="text-rose-400 text-sm">words to tackle</span>
             </div>
-            {graduatedCount > 0 ? (
+            {graduatedCount > 0 && !dismissedGraduatedNotice ? (
               <p className="mt-1 text-xs text-emerald-700 font-medium">
                 🏆 已攻克 <span className="font-bold">{graduatedCount}</span> 个错词
               </p>
@@ -382,7 +405,7 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
               </button>
             ) : null}
             <button
-              onClick={() => onStartSpelling(reviewableQueue)}
+              onClick={() => onStartSpelling(spellingPriorityQueue)}
               className="mt-2 w-full py-2.5 bg-white text-rose-600 font-semibold rounded-lg border border-rose-200 hover:bg-rose-50 transition-colors"
             >
               ✍️ 拼写训练全部 {total} 个
