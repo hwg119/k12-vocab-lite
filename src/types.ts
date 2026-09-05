@@ -112,6 +112,8 @@ export interface SrsState {
   dueAt: number;
   lastReviewedAt: number;
   wrongCount: number;
+  /** 连续答错次数（≥3 时触发集中轰炸模式，答对后归零） */
+  consecutiveWrong?: number;
   /** 首次掌握时间戳（首次标记为"已掌握"的时刻） */
   firstMasteredAt?: number;
   /** 拼写维度独立 SRS（可选）。与词义维度并行，互不设门槛 */

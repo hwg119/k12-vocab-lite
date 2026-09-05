@@ -72,3 +72,21 @@ docs/
 /scripts/test_audio/
 /scripts/data.json
 /scripts/ffmpeg.exe
+/cdn-assets/
+secret*
+
+# 排查/测试用一次性脚本与残留（不提交）
+/scripts/check-word-audio.mjs
+/scripts/debug-status.mjs
+/scripts/download-all.mjs
+/scripts/download-sentence-audio.mjs
+/scripts/enrich-map.mjs
+/scripts/failed-words.txt
+/scripts/gen-map.mjs
+/scripts/quick-map.mjs
+/scripts/test-100.mjs
+/scripts/test-download.mjs
+/scripts/test-fail.mjs
+/scripts/upload-cdn.mjs
+/tatoeba-audio-test.html
+/test-audio.html

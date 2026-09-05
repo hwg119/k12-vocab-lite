@@ -44,7 +44,7 @@ export function applyReview(
   feedback: ReviewFeedback,
   now: number = Date.now(),
 ): SrsState {
-  let { repetitions, easeFactor, intervalDays, wrongCount } = prev;
+  let { repetitions, easeFactor, intervalDays, wrongCount, consecutiveWrong = 0 } = prev;
 
   if (feedback === 'know') {
     // SM2 进展
@@ -53,21 +53,25 @@ export function applyReview(
     else if (repetitions === 1) intervalDays = 6;
     else intervalDays = Math.max(1, Math.round(intervalDays * easeFactor));
     repetitions += 1;
+    consecutiveWrong = 0;
   } else {
     // 'unknown' - 答错，重置进度并扣 EF
     easeFactor = Math.max(MIN_EASE, easeFactor - 0.25);
     repetitions = 0;
     intervalDays = 1;
     wrongCount += 1;
+    consecutiveWrong += 1;
   }
 
   return {
     repetitions,
     easeFactor: Number(easeFactor.toFixed(2)),
     intervalDays,
-    dueAt: now + intervalDays * MS_PER_DAY,
+    // 连续答错 ≥3 次 → 立即到期（集中轰炸），否则按正常间隔
+    dueAt: consecutiveWrong >= 3 ? 0 : now + intervalDays * MS_PER_DAY,
     lastReviewedAt: now,
     wrongCount,
+    consecutiveWrong,
   };
 }
 

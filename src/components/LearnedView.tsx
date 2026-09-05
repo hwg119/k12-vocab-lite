@@ -2,6 +2,8 @@ import React, { memo, useEffect, useMemo, useState } from 'react';
 import { Word, SrsState } from '../types';
 import { wordKey } from '../utils';
 import { IconArrowLeft, IconSearch, IconCheck } from './Icons';
+import { WordAudio } from './WordAudio';
+import { SentenceAudio } from './SentenceAudio';
 
 /** 时间维度 - 基于"首次掌握时间 firstMasteredAt" */
 type TimeFilter = 'all' | 'today' | 'yesterday' | 'week' | 'month' | 'older';
@@ -474,8 +476,16 @@ const LearnedRow = memo(
           <div className="flex items-baseline gap-1.5 sm:gap-2 flex-wrap">
             <span className="font-bold text-slate-800 text-base sm:text-lg break-all">{word.english}</span>
             <span className="font-mono text-slate-400 text-xs sm:text-sm shrink-0">{word.phonetic}</span>
+            <WordAudio word={word.english} />
           </div>
           <div className="text-sm text-slate-600 mt-1 leading-relaxed break-words">{word.chinese}</div>
+          {word.exampleSentence && (
+            <SentenceAudio
+              word={word.english}
+              fallbackSentence={word.exampleSentence}
+              className="mt-1.5"
+            />
+          )}
           {isLearnedNow && (
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1.5 text-[10px] text-slate-400">
               {firstMasteredAt > 0 && (
@@ -533,6 +543,7 @@ const LearnedRow = memo(
     const wa = a.item.word, wb = b.item.word;
     if (wa.id !== wb.id) return false;
     if (wa.english !== wb.english || wa.chinese !== wb.chinese || wa.phonetic !== wb.phonetic) return false;
+    if (wa.exampleSentence !== wb.exampleSentence) return false;
     if (a.item.firstMasteredAt !== b.item.firstMasteredAt) return false;
     if (a.item.lastReviewedAt !== b.item.lastReviewedAt) return false;
     if (a.item.status !== b.item.status) return false;

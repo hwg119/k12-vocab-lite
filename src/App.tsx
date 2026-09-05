@@ -274,6 +274,11 @@ export default function App() {
       const state = srsMap[wordKey(w)] ?? srsMap[w.id];
       return state && (state.dueAt === 0 || state.dueAt <= now) && !batchLearnedRef.current.has(wordKey(w));
     });
+    // 1a) 集中轰炸词（连续答错 ≥3 次），强制排最前
+    const blitz = due.filter(w => {
+      const state = srsMap[wordKey(w)] ?? srsMap[w.id];
+      return (state?.consecutiveWrong ?? 0) >= 3;
+    });
     // 2) 新词（从未学过），排除本批刚学过的（新词首次答完即入 learnedIds，天然不会再出现，但防御性排除）
     const fresh = words.filter(w => {
       const key = wordKey(w);
@@ -281,7 +286,10 @@ export default function App() {
     });
     // 到期优先，不足补新，仍不足给全部
     // 段内打散：到期词 / 新词各自分组随机，避免连续简单词或连续生词
-    const pool = shuffleArray(due).concat(shuffleArray(fresh));
+    const pool = shuffleArray(blitz).concat(shuffleArray(due.filter(w => {
+      const state = srsMap[wordKey(w)] ?? srsMap[w.id];
+      return (state?.consecutiveWrong ?? 0) < 3;
+    }))).concat(shuffleArray(fresh));
     if (pool.length === 0) {
       alert('都已经学过并且全部消化了，没有更多可学习的词，去其他学段看看吧');
       return;
@@ -488,7 +496,7 @@ export default function App() {
             <NavButton active={view === 'dashboard'} onClick={() => setView('dashboard')} icon={<IconHome />} label="首页" />
             <NavButton active={view === 'study'} onClick={startBatch} icon={<IconBook />} label="开始学习" />
             <NavButton active={view === 'units'} onClick={() => setView('units')} icon={<IconGrid />} label={`闯关 (${summary.unitsCompleted}/${summary.unitsTotal})`} />
-            <NavButton active={view === 'mistakes'} onClick={() => setView('mistakes')} icon={<IconAlertCircle />} label={`错词本 (${mistakeIds.length})`} />
+            <NavButton active={view === 'mistakes'} onClick={() => setView('mistakes')} icon={<IconAlertCircle />} label={`复习 (${mistakeIds.length})`} />
             <NavButton active={view === 'confusions'} onClick={() => setView('confusions')} icon={<IconQuestion />} label={`易混淆词 (${confusionCount})`} />
             <NavButton active={view === 'list'} onClick={() => setView('list')} icon={<IconList />} label="词典" />
             <NavButton active={view === 'learned'} onClick={() => setView('learned')} icon={<IconChart />} label="已掌握" />

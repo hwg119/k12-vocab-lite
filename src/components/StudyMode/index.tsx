@@ -1,8 +1,11 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { Word, ReviewFeedback } from '../../types';
 import { IconArrowLeft, IconArrowRight, IconCheck, IconClock, IconBookOpen, IconQuestion } from '../Icons';
 import { WordImage } from '../WordImage';
 import { WordAudio } from '../WordAudio';
+
+import { decomposeWord } from '../../utils/affix';
+import { playKnowSound, playUnknownSound } from '../../utils/sound';
 
 interface StudyModeProps {
   studyQueue: Word[];
@@ -39,6 +42,7 @@ export const StudyMode: React.FC<StudyModeProps> = ({
 
   const currentWord = studyQueue[currentIndex];
   const progress = studyQueue.length > 0 ? ((currentIndex + 1) / studyQueue.length) * 100 : 0;
+  const affix = useMemo(() => currentWord ? decomposeWord(currentWord.english) : null, [currentWord]);
 
   const goToNext = useCallback(() => {
     if (currentIndex < studyQueue.length - 1) {
@@ -63,6 +67,8 @@ export const StudyMode: React.FC<StudyModeProps> = ({
       if (isProcessingRef.current) return;
       isProcessingRef.current = true;
       onSubmit(currentWord.id, feedback);
+      if (feedback === 'know') playKnowSound();
+      else playUnknownSound();
       goToNext();
       setTimeout(() => {
         isProcessingRef.current = false;
@@ -70,6 +76,39 @@ export const StudyMode: React.FC<StudyModeProps> = ({
     },
     [currentWord, onSubmit, goToNext],
   );
+
+  // 键盘快捷键：↑ 不认识 ↓ 认识 ← 上一张 → 下一张 Space/Enter 翻转
+  useEffect(() => {
+    if (!currentWord) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      switch (e.key) {
+        case 'ArrowUp':
+          e.preventDefault();
+          submitAndAdvance('unknown');
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          submitAndAdvance('know');
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          handlePrev();
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          goToNext();
+          break;
+        case ' ':
+        case 'Enter':
+          e.preventDefault();
+          setIsFlipped(prev => !prev);
+          break;
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [currentWord, submitAndAdvance, handlePrev, goToNext]);
 
   // 空状态
   if (!currentWord) {
@@ -181,14 +220,21 @@ export const StudyMode: React.FC<StudyModeProps> = ({
             <p className="text-xl text-slate-700 leading-relaxed break-words whitespace-pre-wrap">
               {currentWord.chinese}
             </p>
-            {currentWord.exampleSentence && (
-              <p className="text-sm text-slate-500 mt-4 leading-relaxed break-words whitespace-pre-wrap italic">
-                “{currentWord.exampleSentence}”
-              </p>
-            )}
             {currentWord.mnemonic && (
               <p className="text-sm text-amber-700 mt-4 bg-amber-50 inline-block px-3 py-1.5 rounded-lg border border-amber-100">
                 💡 {currentWord.mnemonic}
+              </p>
+            )}
+            {affix && (
+              <p className="text-xs text-slate-500 mt-3 leading-relaxed">
+                <span className="font-medium text-slate-600">构词：</span>
+                {affix.prefix && <span className="text-indigo-500">{affix.prefix.affix} </span>}
+                {affix.root && <span className="text-emerald-600">{affix.root.affix} </span>}
+                {affix.suffix && <span className="text-rose-500">{affix.suffix.affix}</span>}
+                <br />
+                {affix.prefix && <span className="text-slate-400">前缀 {affix.prefix.affix} = {affix.prefix.meaning} · </span>}
+                {affix.root && <span className="text-slate-400">词根 {affix.root.affix} = {affix.root.meaning} · </span>}
+                {affix.suffix && <span className="text-slate-400">后缀 {affix.suffix.affix} = {affix.suffix.meaning}</span>}
               </p>
             )}
           </div>

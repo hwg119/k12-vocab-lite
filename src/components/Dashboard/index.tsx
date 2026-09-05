@@ -255,7 +255,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <ActionCard color={unitsTotal > 0 && unitsCompleted === unitsTotal ? 'amber' : 'indigo'}
               icon={<IconGrid />} title="闯关模式" subtitle={`${unitsCompleted}/${unitsTotal} 单元`} onClick={onViewUnits} />
             <ActionCard color={mistakeCount > 0 ? 'rose' : 'slate'} icon={<IconAlertCircle />}
-              title="错词本"
+              title="复习"
               subtitle={
                 mistakeDueCount > 0
                   ? `${mistakeDueCount} 个该巩固了 · 共 ${mistakeCount} 个`

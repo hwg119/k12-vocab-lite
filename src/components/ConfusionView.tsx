@@ -3,6 +3,8 @@ import { Word, SrsState } from '../types';
 import { groupConfusionPairs, highlightDiff } from '../utils';
 import type { ConfusionGroup } from '../utils/confusion';
 import { IconArrowLeft, IconSearch, IconX } from './Icons';
+import { WordAudio } from './WordAudio';
+import { SentenceAudio } from './SentenceAudio';
 
 interface ConfusionViewProps {
   words: Word[];
@@ -370,10 +372,14 @@ const CompareCard: React.FC<{
                   </span>
                 ))}
               </span>
+              <WordAudio word={w.english} />
               <span className="text-xs text-indigo-500 font-mono">{w.phonetic}</span>
             </div>
             {/* 中文 */}
             <p className="text-sm text-slate-600 mt-1 leading-relaxed break-words">{w.chinese}</p>
+            {w.exampleSentence && (
+              <SentenceAudio word={w.english} fallbackSentence={w.exampleSentence} className="mt-0.5" />
+            )}
           </div>
         ))}
       </div>

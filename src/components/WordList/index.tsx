@@ -3,6 +3,7 @@ import { Word } from '../../types';
 import { IconSearch, IconCheck } from '../Icons';
 import { WordImage } from '../WordImage';
 import { WordAudio } from '../WordAudio';
+import { SentenceAudio } from '../SentenceAudio';
 import { useDebounce, useDebouncedCallback } from '../../hooks';
 import { wordKey } from '../../utils';
 
@@ -312,6 +313,13 @@ const WordListRow = memo(
               💡 {word.mnemonic}
             </div>
           )}
+          {word.exampleSentence && (
+            <SentenceAudio
+              word={word.english}
+              fallbackSentence={word.exampleSentence}
+              className="mt-1.5"
+            />
+          )}
         </div>
         {isLearnedNow ? (
           <div className="shrink-0 flex flex-col items-center gap-1">
@@ -364,6 +372,7 @@ const WordListRow = memo(
     if (wa.id !== wb.id) return false;
     if (wa.english !== wb.english || wa.chinese !== wb.chinese || wa.phonetic !== wb.phonetic) return false;
     if (wa.mnemonic !== wb.mnemonic) return false;
+    if (wa.exampleSentence !== wb.exampleSentence) return false;
     return true;
   },
 );

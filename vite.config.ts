@@ -66,9 +66,12 @@ export default defineConfig({
     cssMinify: true,
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor': ['react', 'react-dom'],
-        }
+        manualChunks(id) {
+          if (id.includes('node_modules')) return 'vendor';
+          if (id.includes('/src/data/senior')) return 'data-senior';
+          if (id.includes('/src/data/junior')) return 'data-junior';
+          if (id.includes('/src/data/primary')) return 'data-primary';
+        },
       }
     },
     sourcemap: true,

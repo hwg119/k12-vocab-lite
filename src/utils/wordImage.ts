@@ -1,21 +1,15 @@
 import { Word } from '../types';
+import { CDN_BASE } from '../config/cdn';
 
 /**
- * 单词配图服务（离线版）：读取打包进应用的本地插画资源（webp 优化版）。
+ * 单词配图（CDN 专用）：图片以 {key}.webp 上传到 COS 桶 /images/，
+ * App 运行时通过 CDN URL 加载。构建时不再用 import.meta.glob 打包，
+ * 从而把 ~11.6MB 配图从 APK 中剔除。
  *
- * - PNG 源母版：src/assets/word-images/*.png（由 scripts/generate-word-images.mjs
- *   与 scripts/download-wiki-images.mjs 写入，仅作为压缩脚本输入）
- * - WebP 优化版：src/assets/word-images-webp/*.webp（由
- *   scripts/compress-images-to-webp.mjs 生成，已显著减小 68% 体积）
- *
- * 本模块只 glob webp，原 PNG 不进 bundle、不进 PWA precache，避免重复打包。
- * 命名约定：{english 小写、非字母数字转连字符}.webp，如 apple.webp / machine.webp。
+ * - 未配置 CDN_BASE（本地预览）时返回 undefined → 组件不渲染配图
+ * - CDN 上缺失的图由 WordImage 组件的 onError 自动隐藏
+ * 命名约定：{english 小写、非字母数字转连字符}.webp，如 apple.webp / a-lot.webp
  */
-
-const images = import.meta.glob('../assets/word-images-webp/*.webp', {
-  eager: true,
-  import: 'default',
-}) as Record<string, string>;
 
 /** 英文 → 规范化图片文件名（小写、非字母数字变连字符） */
 export function wordImageFileKey(english: string): string {
@@ -27,15 +21,10 @@ export function wordImageFileKey(english: string): string {
   );
 }
 
-/** 返回单词配图 URL；无配图返回 undefined */
+/** 返回单词配图 URL；未配置 CDN 时返回 undefined（组件据此不渲染配图） */
 export function getWordImage(english: string): string | undefined {
-  const key = wordImageFileKey(english);
-  const entry = Object.entries(images).find(([p]) => {
-    const base = p.split('/').pop() || '';
-    const stem = base.replace(/\.webp$/i, '');
-    return stem === key;
-  });
-  return entry?.[1];
+  if (!CDN_BASE) return undefined;
+  return `${CDN_BASE}/images/${wordImageFileKey(english)}.webp`;
 }
 
 /** 无法配图的虚词白名单（冠词/介词/连词/代词/助动词等，配图易误导或无意义） */

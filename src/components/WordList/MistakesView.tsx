@@ -5,6 +5,7 @@ import { useLocalStorage } from '../../hooks';
 import { IconArrowLeft, IconTrash } from '../Icons';
 import { WordImage } from '../WordImage';
 import { WordAudio } from '../WordAudio';
+import { SentenceAudio } from '../SentenceAudio';
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -102,28 +103,29 @@ function GraduatedSection({
             key={rec.key}
             className="bg-white rounded-xl border border-emerald-100 p-4 flex items-center justify-between hover:shadow-sm transition-shadow"
           >
-            <div className="flex-1 min-w-0 flex items-center gap-3">
-              <div className="min-w-0">
-                <div className="flex items-baseline gap-2">
+            <div className="flex-1 min-w-0 flex items-start gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline gap-2 flex-wrap">
                   <span className="font-bold text-slate-800">{english || '(未命名)'}</span>
                   {phonetic ? (
                     <span className="text-xs text-indigo-500 font-mono">{phonetic}</span>
                   ) : null}
+                  {english ? <WordAudio word={english} /> : null}
                 </div>
                 {chinese ? (
                   <p className="text-sm text-slate-500 mt-1 break-words leading-relaxed">{chinese}</p>
                 ) : null}
+                {word?.exampleSentence && (
+                  <SentenceAudio word={word.english} fallbackSentence={word.exampleSentence} className="mt-0.5" />
+                )}
               </div>
               {english ? (
-                <>
-                  <WordAudio word={english} />
-                  <WordImage
-                    english={english}
-                    alt={english}
-                    className="w-10 h-10 rounded-lg bg-slate-100 shrink-0"
-                    zoomable={false}
-                  />
-                </>
+                <WordImage
+                  english={english}
+                  alt={english}
+                  className="w-10 h-10 rounded-lg bg-slate-100 shrink-0"
+                  zoomable={false}
+                />
               ) : null}
             </div>
             <div className="flex flex-col items-end gap-1.5 shrink-0 ml-3">
@@ -212,6 +214,7 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
         repetitions: srs?.repetitions ?? 0,
         dueAt: srs?.dueAt ?? 0,
         lastReviewedAt: srs?.lastReviewedAt ?? 0,
+        consecutiveWrong: srs?.consecutiveWrong ?? 0,
         spWrong: sp?.wrongCount ?? 0,
         spRep: sp?.repetitions ?? 0,
         spDueAt: sp?.dueAt ?? 0,
@@ -226,6 +229,7 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
         repetitions: number;
         dueAt: number;
         lastReviewedAt: number;
+        consecutiveWrong: number;
         spWrong: number;
         spRep: number;
         spDueAt: number;
@@ -290,11 +294,11 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
           <IconArrowLeft className="w-4 h-4" />
           回首页
         </button>
-        <h2 className="text-xl font-bold text-slate-800">错词本</h2>
+        <h2 className="text-xl font-bold text-slate-800">复习</h2>
         <div className="w-16"></div>
       </div>
 
-      {/* 顶部 Tab：错词本 / 已攻克（默认错词本） */}
+      {/* 顶部 Tab：复习 / 已攻克（默认复习） */}
       <div className="flex bg-slate-100 rounded-xl p-1 mb-4 self-stretch">
         <button
           type="button"
@@ -306,7 +310,7 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
               : 'text-slate-500 hover:text-slate-700')
           }
         >
-          错词本 <span className="ml-1 text-xs opacity-70">({total})</span>
+          复习 <span className="ml-1 text-xs opacity-70">({total})</span>
         </button>
         <button
           type="button"
@@ -342,7 +346,7 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
           {/* 清空错词操作区（始终可见，让用户能主动清理残留脏数据） */}
           <div className="bg-white border border-slate-100 rounded-2xl p-4 mb-6 flex items-center justify-between">
             <div className="text-sm text-slate-600">
-              <span className="font-medium text-slate-800">管理错词本</span>
+              <span className="font-medium text-slate-800">管理复习</span>
               <span className="ml-2 text-xs text-slate-400">清空不会影响已掌握单词</span>
             </div>
             {confirming ? (
@@ -419,7 +423,7 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
           {/* 清空错词操作区（明显位置） */}
           <div className="bg-white border border-slate-100 rounded-2xl p-4 mb-6 flex items-center justify-between">
             <div className="text-sm text-slate-600">
-              <span className="font-medium text-slate-800">管理错词本</span>
+              <span className="font-medium text-slate-800">管理复习</span>
               <span className="ml-2 text-xs text-slate-400">清空不会影响已掌握单词</span>
             </div>
             {confirming ? (
@@ -451,7 +455,7 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
 
           {/* 列表 */}
           <ul className="space-y-2">
-            {sortedWords.map(({ word, wrong, repetitions, spWrong, spRep }) => {
+            {sortedWords.map(({ word, wrong, repetitions, spWrong, spRep, consecutiveWrong }) => {
               const threshold = graduationThreshold(wrong);
               const progress = Math.min(repetitions, threshold);
               const spThreshold = graduationThreshold(spWrong);
@@ -465,9 +469,27 @@ export const MistakesView: React.FC<MistakesViewProps> = ({
                     <div className="min-w-0">
                       <div className="flex items-baseline gap-2">
                         <span className="font-bold text-slate-800">{word.english}</span>
+                        {consecutiveWrong >= 3 && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-bold text-rose-600 bg-rose-100 rounded border border-rose-200 leading-none">
+                            轰炸
+                          </span>
+                        )}
                         <span className="text-xs text-indigo-500 font-mono">{word.phonetic}</span>
+                        <WordAudio word={word.english} />
                       </div>
                       <p className="text-sm text-slate-500 mt-1 break-words leading-relaxed">{word.chinese}</p>
+                      {word.mnemonic && (
+                        <p className="text-xs text-amber-600 mt-0.5 leading-relaxed">
+                          💡 {word.mnemonic}
+                        </p>
+                      )}
+                      {word.exampleSentence && (
+                        <SentenceAudio
+                          word={word.english}
+                          fallbackSentence={word.exampleSentence}
+                          className="mt-0.5"
+                        />
+                      )}
                     </div>
                     <WordImage
                       english={word.english}

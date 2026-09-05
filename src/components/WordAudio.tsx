@@ -1,4 +1,5 @@
 import React, { useCallback, useRef, useState } from 'react';
+import { wordAudioUrl } from '../config/cdn';
 
 interface WordAudioProps {
   word: string;
@@ -7,30 +8,69 @@ interface WordAudioProps {
 
 /**
  * 单词发音按钮
- * 点击播放 `public/audio/{word}.mp3`，支持 CDN 回退
+ *
+ * 播放优先级：
+ *   1. 本地/CDN opus：`{CDN_BASE}/audio/{word}.opus`（97.2% 词覆盖，无网络可用）
+ *   2. 有道 dictvoice API 回退（国内可访问，无需 API Key）
+ *      美音：https://dict.youdao.com/dictvoice?audio={word}&type=2
+ *      英音：https://dict.youdao.com/dictvoice?audio={word}&type=1
  */
 export const WordAudio: React.FC<WordAudioProps> = ({ word, className = '' }) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
 
+  const playWithFallback = useCallback(async (urls: string[], idx: number): Promise<void> => {
+    if (idx >= urls.length) {
+      setLoading(false);
+      setError(true);
+      audioRef.current = null;
+      return;
+    }
+    const url = urls[idx];
+    const audio = new Audio(url);
+    audioRef.current = audio;
+
+    const onSucceed = () => {
+      setLoading(false);
+      setError(false);
+    };
+    const onFail = () => {
+      audio.removeEventListener('loadeddata', onSucceed);
+      audio.removeEventListener('error', onFail);
+      audio.removeEventListener('canplay', onSucceed);
+      // 尝试下一个 fallback
+      void playWithFallback(urls, idx + 1);
+    };
+
+    audio.addEventListener('loadeddata', onSucceed);
+    audio.addEventListener('canplay', onSucceed);
+    audio.addEventListener('error', onFail);
+
+    try {
+      await audio.play();
+    } catch {
+      onFail();
+    }
+  }, []);
+
   const play = useCallback(() => {
     if (loading) return;
     setLoading(true);
     setError(false);
 
-    const audio = new Audio(`/audio/${encodeURIComponent(word)}.opus`);
-    audio.addEventListener('ended', () => { audioRef.current = null; });
-    audioRef.current = audio;
+    const enc = encodeURIComponent(word);
+    const urls = [
+      // 1. 本地/CDN opus（路径由 cdn 配置决定是否走远端）
+      wordAudioUrl(word),
+      // 2. 兜底：有道美音（绝对 URL，不受 CDN_BASE 影响）
+      `https://dict.youdao.com/dictvoice?audio=${enc}&type=2`,
+      // 3. 兜底：有道英音
+      `https://dict.youdao.com/dictvoice?audio=${enc}&type=1`,
+    ];
 
-    audio.play().then(() => {
-      setLoading(false);
-    }).catch(() => {
-      setLoading(false);
-      setError(true);
-      audioRef.current = null;
-    });
-  }, [word, loading]);
+    void playWithFallback(urls, 0);
+  }, [word, loading, playWithFallback]);
 
   return (
     <>
