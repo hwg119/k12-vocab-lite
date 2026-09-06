@@ -21768,5 +21768,911 @@
     "textCn": "我喜欢旅行。",
     "audioId": 696150,
     "sentenceId": 7156426
+  },
+  "a": {
+    "file": "a.mp3",
+    "text": "What a stench!",
+    "textCn": "这气味很难闻。",
+    "sentenceId": 12283343
+  },
+  "he": {
+    "file": "he.mp3",
+    "text": "He left.",
+    "textCn": "他走了。",
+    "sentenceId": 3259071
+  },
+  "not": {
+    "file": "not.mp3",
+    "text": "Why not?",
+    "textCn": "为什么不？",
+    "sentenceId": 30545
+  },
+  "she": {
+    "file": "she.mp3",
+    "text": "She blushed.",
+    "textCn": "她脸红了。",
+    "sentenceId": 3523742
+  },
+  "they": {
+    "file": "they.mp3",
+    "text": "They succeeded.",
+    "textCn": "他們已經達到了目標。",
+    "sentenceId": 3721448
+  },
+  "as": {
+    "file": "as.mp3",
+    "text": "Tom identifies as queer.",
+    "textCn": "汤姆认为是酷儿。",
+    "sentenceId": 4435132
+  },
+  "his": {
+    "file": "his.mp3",
+    "text": "Tom removed his mask.",
+    "textCn": "汤姆脱了口罩。",
+    "sentenceId": 11627895
+  },
+  "make": {
+    "file": "make.mp3",
+    "text": "Make a prediction.",
+    "textCn": "請作預測！",
+    "sentenceId": 2249575
+  },
+  "so": {
+    "file": "so.mp3",
+    "text": "So long.",
+    "textCn": "一会儿见！",
+    "sentenceId": 2267731
+  },
+  "about": {
+    "file": "about.mp3",
+    "text": "What about me?",
+    "textCn": "那我呢?",
+    "sentenceId": 2549675
+  },
+  "your": {
+    "file": "your.mp3",
+    "text": "Accept your fate.",
+    "textCn": "接受命運吧。",
+    "sentenceId": 11104756
+  },
+  "no": {
+    "file": "no.mp3",
+    "text": "Oh, no!",
+    "textCn": "不会吧。",
+    "sentenceId": 1806256
+  },
+  "her": {
+    "file": "her.mp3",
+    "text": "He hates her.",
+    "textCn": "他恨她。",
+    "sentenceId": 2392973
+  },
+  "because": {
+    "file": "because.mp3",
+    "text": "We were late because of you.",
+    "textCn": "因为你我们才迟了。",
+    "sentenceId": 10828584
+  },
+  "very": {
+    "file": "very.mp3",
+    "text": "Thanks very much.",
+    "textCn": "十分感谢。",
+    "sentenceId": 2250091
+  },
+  "like": {
+    "file": "like.mp3",
+    "text": "I like shrimp.",
+    "textCn": "我愛吃蝦。",
+    "sentenceId": 12406076
+  },
+  "back": {
+    "file": "back.mp3",
+    "text": "Back in.",
+    "textCn": "回來。",
+    "sentenceId": 12155923
+  },
+  "day": {
+    "file": "day.mp3",
+    "text": "Another day passed.",
+    "textCn": "又过了一天了。",
+    "sentenceId": 32708
+  },
+  "however": {
+    "file": "however.mp3",
+    "text": "There are three empty rooms. However, we can't use any of them.",
+    "textCn": "虽然有三间空屋，但哪间都用不了。",
+    "sentenceId": 2512953
+  },
+  "programme": {
+    "file": "programme.mp3",
+    "text": "She hired him as a programmer.",
+    "textCn": "她聘請他作程式設計師。",
+    "sentenceId": 388367
+  },
+  "likely": {
+    "file": "likely.mp3",
+    "text": "I like shrimp.",
+    "textCn": "我愛吃蝦。",
+    "sentenceId": 12406076
+  },
+  "particular": {
+    "file": "particular.mp3",
+    "text": "Tom's parents weren't particularly pleased.",
+    "textCn": "汤姆的父母不是特别高兴。",
+    "sentenceId": 7951084
+  },
+  "discuss": {
+    "file": "discuss.mp3",
+    "text": "Let the discussions begin.",
+    "textCn": "開始討論吧。",
+    "sentenceId": 5740662
+  },
+  "movement": {
+    "file": "movement.mp3",
+    "text": "This movement from rural to urban areas has been going on for over two hundred years.",
+    "textCn": "在這二百年來，有很多人從農村搬到了市區居住。",
+    "sentenceId": 279076
+  },
+  "standard": {
+    "file": "standard.mp3",
+    "text": "The amount of paper produced by a country is closely related to its cultural standards.",
+    "textCn": "一个国家纸的产量和它的文明程度密切相关。",
+    "sentenceId": 27772
+  },
+  "wrong": {
+    "file": "wrong.mp3",
+    "text": "I'm wrong.",
+    "textCn": "我搞错了。",
+    "sentenceId": 5828701
+  },
+  "piece": {
+    "file": "piece.mp3",
+    "text": "The bottle smashed to pieces.",
+    "textCn": "瓶子摔成了碎片。",
+    "sentenceId": 318575
+  },
+  "size": {
+    "file": "size.mp3",
+    "text": "It's not my size.",
+    "textCn": "这不是我的尺码。",
+    "sentenceId": 10064133
+  },
+  "eat": {
+    "file": "eat.mp3",
+    "text": "Finish eating.",
+    "textCn": "把它吃掉。",
+    "sentenceId": 8586627
+  },
+  "environment": {
+    "file": "environment.mp3",
+    "text": "This is a good learning environment.",
+    "textCn": "這是個適合學習的環境。",
+    "sentenceId": 680831
+  },
+  "step": {
+    "file": "step.mp3",
+    "text": "Step inside.",
+    "textCn": "进来。",
+    "sentenceId": 1841184
+  },
+  "near": {
+    "file": "near.mp3",
+    "text": "Christmas drew near.",
+    "textCn": "圣诞节近了。",
+    "sentenceId": 373239
+  },
+  "everyone": {
+    "file": "everyone.mp3",
+    "text": "Everyone knows.",
+    "textCn": "那件事谁都知道。",
+    "sentenceId": 5521184
+  },
+  "please": {
+    "file": "please.mp3",
+    "text": "Please behave.",
+    "textCn": "好好為人處事。",
+    "sentenceId": 11927618
+  },
+  "sound": {
+    "file": "sound.mp3",
+    "text": "You sound tired.",
+    "textCn": "你看起来很困了。",
+    "sentenceId": 3250919
+  },
+  "west": {
+    "file": "west.mp3",
+    "text": "The sun sets in the west.",
+    "textCn": "太阳在西边落下",
+    "sentenceId": 275141
+  },
+  "whom": {
+    "file": "whom.mp3",
+    "text": "Doubtless there exists in this world precisely the right woman for any given man to marry and vice versa; but when you consider that a human being has the opportunity of being acquainted with only a few hundred people, and out of the few hundred that there are but a dozen or less whom he knows intimately, and out of the dozen, one or two friends at most, it will easily be seen, when we remember the number of millions who inhabit this world, that probably, since the earth was created, the right man has never yet met the right woman.",
+    "textCn": "毫無疑問，世上存在這樣的情況：無論哪個男人，都有一個完全合適的女人與他結婚，反之亦然。然而，試想人一生中只有機會認識幾百個人，而在這幾百人中只能真正了解不到十幾個人，再從這十幾個人中只能和一兩個人成為朋友，而且如果我們所記得的也只是這世上的幾百萬人——那麼你很容易就能察覺到：自地球誕生以來，那個完全合適的男人，也許從未遇見過那個完全合適的女人。",
+    "sentenceId": 7697649
+  },
+  "skill": {
+    "file": "skill.mp3",
+    "text": "My father is a skilled fisherman.",
+    "textCn": "我爸爸是个钓鱼高手。",
+    "sentenceId": 998995
+  },
+  "season": {
+    "file": "season.mp3",
+    "text": "Enjoy the holiday season.",
+    "textCn": "祝您佳節愉快。",
+    "sentenceId": 7673560
+  },
+  "finish": {
+    "file": "finish.mp3",
+    "text": "Finish eating.",
+    "textCn": "把它吃掉。",
+    "sentenceId": 8586627
+  },
+  "visit": {
+    "file": "visit.mp3",
+    "text": "I visited Tom.",
+    "textCn": "我拜访汤姆。",
+    "sentenceId": 4500184
+  },
+  "competition": {
+    "file": "competition.mp3",
+    "text": "They won many competitions.",
+    "textCn": "他們贏了許多比賽。",
+    "sentenceId": 776162
+  },
+  "i": {
+    "file": "i.mp3",
+    "text": "I bit.",
+    "textCn": "咬了。",
+    "sentenceId": 12074682
+  },
+  "physical": {
+    "file": "physical.mp3",
+    "text": "Physics is my favorite subject.",
+    "textCn": "物理是我最喜歡的科目。",
+    "sentenceId": 319980
+  },
+  "him": {
+    "file": "him.mp3",
+    "text": "Cuff him.",
+    "textCn": "把他铐上。",
+    "sentenceId": 1954267
+  },
+  "document": {
+    "file": "document.mp3",
+    "text": "I signed the document.",
+    "textCn": "我簽署了文件。",
+    "sentenceId": 7768858
+  },
+  "software": {
+    "file": "software.mp3",
+    "text": "Software is constantly evolving.",
+    "textCn": "软件正在不断进化。",
+    "sentenceId": 6774794
+  },
+  "opinion": {
+    "file": "opinion.mp3",
+    "text": "Your opinion matters.",
+    "textCn": "你的觀點是重要的。",
+    "sentenceId": 4500995
+  },
+  "damage": {
+    "file": "damage.mp3",
+    "text": "Alcohol damages the liver.",
+    "textCn": "酒精会损害肝脏。",
+    "sentenceId": 1578736
+  },
+  "extra": {
+    "file": "extra.mp3",
+    "text": "Utilities are extra.",
+    "textCn": "额外费用不包括在内。",
+    "sentenceId": 1000706
+  },
+  "exchange": {
+    "file": "exchange.mp3",
+    "text": "Are you an exchange student?",
+    "textCn": "请问您是留学生吗？",
+    "sentenceId": 2412268
+  },
+  "eventually": {
+    "file": "eventually.mp3",
+    "text": "Everybody dies eventually.",
+    "textCn": "我们都迟早会死。",
+    "sentenceId": 4016042
+  },
+  "equipment": {
+    "file": "equipment.mp3",
+    "text": "Keep away from the electrical equipment.",
+    "textCn": "遠離電器設備。",
+    "sentenceId": 279133
+  },
+  "trial": {
+    "file": "trial.mp3",
+    "text": "We learn by trial and error.",
+    "textCn": "失败是成功之母。",
+    "sentenceId": 264966
+  },
+  "injury": {
+    "file": "injury.mp3",
+    "text": "The doctor treated her injury.",
+    "textCn": "醫生把她的傷治好了。",
+    "sentenceId": 28095
+  },
+  "wage": {
+    "file": "wage.mp3",
+    "text": "Can you get by on your wages?",
+    "textCn": "你现在的薪水够用吗？",
+    "sentenceId": 16147
+  },
+  "acquire": {
+    "file": "acquire.mp3",
+    "text": "He acquired Russian quickly.",
+    "textCn": "他很快就掌握了俄語。",
+    "sentenceId": 293374
+  },
+  "sleep": {
+    "file": "sleep.mp3",
+    "text": "Were you sleeping?",
+    "textCn": "你睡了吗？",
+    "sentenceId": 2254513
+  },
+  "respect": {
+    "file": "respect.mp3",
+    "text": "Respect yourself.",
+    "textCn": "有点自尊。",
+    "sentenceId": 264824
+  },
+  "freedom": {
+    "file": "freedom.mp3",
+    "text": "Democracy encourages freedom.",
+    "textCn": "民主主义鼓励自由。",
+    "sentenceId": 322693
+  },
+  "contribute": {
+    "file": "contribute.mp3",
+    "text": "Everyone is free to contribute.",
+    "textCn": "每个人都有能力作贡献。",
+    "sentenceId": 704150
+  },
+  "unemployment": {
+    "file": "unemployment.mp3",
+    "text": "Tom might be unemployed.",
+    "textCn": "湯姆可能失業了。",
+    "sentenceId": 6220565
+  },
+  "initial": {
+    "file": "initial.mp3",
+    "text": "What do the initials NTT stand for?",
+    "textCn": "NTT這個縮寫是什麼意思？",
+    "sentenceId": 280184
+  },
+  "youth": {
+    "file": "youth.mp3",
+    "text": "Is there a youth hostel around here?",
+    "textCn": "附近有没有青年旅舍？",
+    "sentenceId": 568302
+  },
+  "connection": {
+    "file": "connection.mp3",
+    "text": "We have a special connection.",
+    "textCn": "我們有特殊聯繫。",
+    "sentenceId": 4665394
+  },
+  "crowd": {
+    "file": "crowd.mp3",
+    "text": "The crowd is going nuts.",
+    "textCn": "大家都快疯了。",
+    "sentenceId": 1400234
+  },
+  "flow": {
+    "file": "flow.mp3",
+    "text": "Everything flows.",
+    "textCn": "萬物流轉。",
+    "sentenceId": 1490740
+  },
+  "castle": {
+    "file": "castle.mp3",
+    "text": "I like castles.",
+    "textCn": "我喜欢城堡。",
+    "sentenceId": 252280
+  },
+  "spot": {
+    "file": "spot.mp3",
+    "text": "A cold beer would hit the spot!",
+    "textCn": "来杯冰啤酒就太棒了！",
+    "sentenceId": 326043
+  },
+  "persuade": {
+    "file": "persuade.mp3",
+    "text": "Tom failed to persuade Mary.",
+    "textCn": "汤姆没能说服玛丽。",
+    "sentenceId": 1028952
+  },
+  "russian": {
+    "file": "russian.mp3",
+    "text": "She can speak Russian.",
+    "textCn": "她說俄語。",
+    "sentenceId": 312440
+  },
+  "neighbour": {
+    "file": "neighbour.mp3",
+    "text": "We have a new neighbour.",
+    "textCn": "我們有新鄰居。",
+    "sentenceId": 2686055
+  },
+  "china": {
+    "file": "china.mp3",
+    "text": "My father went to China.",
+    "textCn": "我爸爸去中国了。",
+    "sentenceId": 2719637
+  },
+  "suspect": {
+    "file": "suspect.mp3",
+    "text": "I suspected Tom was interested.",
+    "textCn": "我怀疑汤姆也感到兴趣。",
+    "sentenceId": 6676672
+  },
+  "mix": {
+    "file": "mix.mp3",
+    "text": "Mix the ingredients well.",
+    "textCn": "把配料好好混一下。",
+    "sentenceId": 9662836
+  },
+  "assist": {
+    "file": "assist.mp3",
+    "text": "We need assistance.",
+    "textCn": "我們需要幫助。",
+    "sentenceId": 7781088
+  },
+  "yours": {
+    "file": "yours.mp3",
+    "text": "Accept your fate.",
+    "textCn": "接受命運吧。",
+    "sentenceId": 11104756
+  },
+  "agricultural": {
+    "file": "agricultural.mp3",
+    "text": "My major is agriculture.",
+    "textCn": "我主修农业。",
+    "sentenceId": 251317
+  },
+  "chinese": {
+    "file": "chinese.mp3",
+    "text": "She speaks Chinese.",
+    "textCn": "她讲中文。",
+    "sentenceId": 462394
+  },
+  "willing": {
+    "file": "willing.mp3",
+    "text": "Communism will win.",
+    "textCn": "共产主义必胜。",
+    "sentenceId": 8734085
+  },
+  "italian": {
+    "file": "italian.mp3",
+    "text": "I don't like Italian food.",
+    "textCn": "我不喜欢意大利食物。",
+    "sentenceId": 7733484
+  },
+  "pour": {
+    "file": "pour.mp3",
+    "text": "It poured down again today.",
+    "textCn": "今天又下暴雨了。",
+    "sentenceId": 10345117
+  },
+  "tuesday": {
+    "file": "tuesday.mp3",
+    "text": "Come on Tuesday if possible.",
+    "textCn": "如果可能的话，周二过来。",
+    "sentenceId": 39570
+  },
+  "entrance": {
+    "file": "entrance.mp3",
+    "text": "There's a back entrance.",
+    "textCn": "有后门。",
+    "sentenceId": 4016054
+  },
+  "apple": {
+    "file": "apple.mp3",
+    "text": "Dice the apple.",
+    "textCn": "將蘋果切丁。",
+    "sentenceId": 10739034
+  },
+  "disaster": {
+    "file": "disaster.mp3",
+    "text": "That was a disaster.",
+    "textCn": "那是災難。",
+    "sentenceId": 4494884
+  },
+  "reserve": {
+    "file": "reserve.mp3",
+    "text": "Tom has a reservation.",
+    "textCn": "汤姆有预约。",
+    "sentenceId": 1177490
+  },
+  "spanish": {
+    "file": "spanish.mp3",
+    "text": "She can speak Spanish.",
+    "textCn": "她会说西班牙语 。",
+    "sentenceId": 547972
+  },
+  "favourite": {
+    "file": "favourite.mp3",
+    "text": "What's your favourite song?",
+    "textCn": "哪首是你最喜欢的歌？",
+    "sentenceId": 10999844
+  },
+  "fortune": {
+    "file": "fortune.mp3",
+    "text": "You're fortunate.",
+    "textCn": "你們很幸運。",
+    "sentenceId": 2202880
+  },
+  "admission": {
+    "file": "admission.mp3",
+    "text": "Admission is free.",
+    "textCn": "免费入场。",
+    "sentenceId": 2264611
+  },
+  "tissue": {
+    "file": "tissue.mp3",
+    "text": "We're out of tissue paper, so I need to go buy some.",
+    "textCn": "衛生紙用完了，我必須去買。",
+    "sentenceId": 4008929
+  },
+  "determination": {
+    "file": "determination.mp3",
+    "text": "We've got to have determination.",
+    "textCn": "我們要下決心了。",
+    "sentenceId": 5726614
+  },
+  "rugby": {
+    "file": "rugby.mp3",
+    "text": "He was a rugby player.",
+    "textCn": "他曾是个英式橄榄球运动员。",
+    "sentenceId": 293330
+  },
+  "bush": {
+    "file": "bush.mp3",
+    "text": "I'm bushed.",
+    "textCn": "我累死了。",
+    "sentenceId": 3384593
+  },
+  "violent": {
+    "file": "violent.mp3",
+    "text": "I felt my heart beating violently.",
+    "textCn": "我感覺到自己的心在劇烈地跳動。",
+    "sentenceId": 258780
+  },
+  "adjust": {
+    "file": "adjust.mp3",
+    "text": "I can adjust.",
+    "textCn": "我可以去适应一下。",
+    "sentenceId": 11894515
+  },
+  "brick": {
+    "file": "brick.mp3",
+    "text": "That house is built of bricks.",
+    "textCn": "那幢房子是砖头造的。",
+    "sentenceId": 68541
+  },
+  "volunteer": {
+    "file": "volunteer.mp3",
+    "text": "Tom was the first person to volunteer.",
+    "textCn": "汤姆是第一个志愿参与的人。",
+    "sentenceId": 5915633
+  },
+  "wander": {
+    "file": "wander.mp3",
+    "text": "Sometimes it's fun to just wander about aimlessly.",
+    "textCn": "偶爾漫無目的地走一走是很有樂趣的。",
+    "sentenceId": 9972080
+  },
+  "illegal": {
+    "file": "illegal.mp3",
+    "text": "Gambling is illegal.",
+    "textCn": "赌博是非法的。",
+    "sentenceId": 1777594
+  },
+  "nowhere": {
+    "file": "nowhere.mp3",
+    "text": "I'm getting nowhere.",
+    "textCn": "没头绪。",
+    "sentenceId": 9086314
+  },
+  "attraction": {
+    "file": "attraction.mp3",
+    "text": "She has attractive eyes.",
+    "textCn": "她有一双迷人的眼睛。",
+    "sentenceId": 317194
+  },
+  "hers": {
+    "file": "hers.mp3",
+    "text": "He hates her.",
+    "textCn": "他恨她。",
+    "sentenceId": 2392973
+  },
+  "garage": {
+    "file": "garage.mp3",
+    "text": "Do you have a garage?",
+    "textCn": "你有車庫嗎？",
+    "sentenceId": 2647200
+  },
+  "flexible": {
+    "file": "flexible.mp3",
+    "text": "Tom lacks flexibility.",
+    "textCn": "汤姆缺乏灵活性。",
+    "sentenceId": 5112909
+  },
+  "native": {
+    "file": "native.mp3",
+    "text": "French is my native tongue.",
+    "textCn": "法语是我的母语。",
+    "sentenceId": 8047538
+  },
+  "discount": {
+    "file": "discount.mp3",
+    "text": "Can the price be discounted?",
+    "textCn": "价钱可以打折吗？",
+    "sentenceId": 1167766
+  },
+  "applicant": {
+    "file": "applicant.mp3",
+    "text": "This application is awesome.",
+    "textCn": "這個應用好極了。",
+    "sentenceId": 8783917
+  },
+  "bound": {
+    "file": "bound.mp3",
+    "text": "Where are you bound?",
+    "textCn": "你去哪儿？",
+    "sentenceId": 669129
+  },
+  "invitation": {
+    "file": "invitation.mp3",
+    "text": "Who invited you?",
+    "textCn": "誰邀請了你們？",
+    "sentenceId": 2254856
+  },
+  "weekly": {
+    "file": "weekly.mp3",
+    "text": "It snowed all week.",
+    "textCn": "雪下了一週。",
+    "sentenceId": 8815077
+  },
+  "acre": {
+    "file": "acre.mp3",
+    "text": "That pasture is ten acres.",
+    "textCn": "那個牧場有十英畝大。",
+    "sentenceId": 470994
+  },
+  "clinic": {
+    "file": "clinic.mp3",
+    "text": "Where is the nearest clinic?",
+    "textCn": "最近的诊所在哪里？",
+    "sentenceId": 11018338
+  },
+  "tap": {
+    "file": "tap.mp3",
+    "text": "He tapped me on the shoulder.",
+    "textCn": "他拍了拍我的肩膀。",
+    "sentenceId": 297836
+  },
+  "disability": {
+    "file": "disability.mp3",
+    "text": "I wish I could figure out how to disable comments on my blog.",
+    "textCn": "但愿我能找到在我的博客上屏蔽评论的办法。",
+    "sentenceId": 953728
+  },
+  "cinema": {
+    "file": "cinema.mp3",
+    "text": "I went to the cinema yesterday.",
+    "textCn": "昨天我去电影院。",
+    "sentenceId": 2600846
+  },
+  "nearby": {
+    "file": "nearby.mp3",
+    "text": "Is Tom nearby?",
+    "textCn": "汤姆在旁边吗？",
+    "sentenceId": 4945619
+  },
+  "navy": {
+    "file": "navy.mp3",
+    "text": "The navy defends our seacoast.",
+    "textCn": "這海軍保衛我們的海岸。",
+    "sentenceId": 681551
+  },
+  "adjustment": {
+    "file": "adjustment.mp3",
+    "text": "I can adjust.",
+    "textCn": "我可以去适应一下。",
+    "sentenceId": 11894515
+  },
+  "counter": {
+    "file": "counter.mp3",
+    "text": "Where's the ticket counter?",
+    "textCn": "售票窗口在哪裡？",
+    "sentenceId": 1495799
+  },
+  "artificial": {
+    "file": "artificial.mp3",
+    "text": "AI means Artificial Intelligence.",
+    "textCn": "AI是人工智能的略称。",
+    "sentenceId": 427666
+  },
+  "uniform": {
+    "file": "uniform.mp3",
+    "text": "Tom is wearing his uniform.",
+    "textCn": "汤姆穿着他的制服。",
+    "sentenceId": 6531407
+  },
+  "fade": {
+    "file": "fade.mp3",
+    "text": "Her beauty will fade in time.",
+    "textCn": "她的美貌會隨着時間而流逝。",
+    "sentenceId": 763555
+  },
+  "superior": {
+    "file": "superior.mp3",
+    "text": "Be respectful to your superiors, if you have any.",
+    "textCn": "如果你有上司的话，学会尊敬他（她）。",
+    "sentenceId": 667891
+  },
+  "receipt": {
+    "file": "receipt.mp3",
+    "text": "Don't forget the receipt.",
+    "textCn": "不要忘記收據。",
+    "sentenceId": 379440
+  },
+  "fool": {
+    "file": "fool.mp3",
+    "text": "You fool!",
+    "textCn": "笨蛋！",
+    "sentenceId": 9723895
+  },
+  "diagram": {
+    "file": "diagram.mp3",
+    "text": "Let me explain it with a diagram.",
+    "textCn": "讓我用一張圖來說明。",
+    "sentenceId": 270673
+  },
+  "motivation": {
+    "file": "motivation.mp3",
+    "text": "Jealousy was the motive for the murder.",
+    "textCn": "嫉妒是謀殺的動機。",
+    "sentenceId": 265007
+  },
+  "stamp": {
+    "file": "stamp.mp3",
+    "text": "I collect stamps.",
+    "textCn": "我收集郵票。",
+    "sentenceId": 5858561
+  },
+  "magic": {
+    "file": "magic.mp3",
+    "text": "That was magic.",
+    "textCn": "那是魔术。",
+    "sentenceId": 2250959
+  },
+  "orange": {
+    "file": "orange.mp3",
+    "text": "I like oranges.",
+    "textCn": "我喜欢橙子。",
+    "sentenceId": 6925108
+  },
+  "happiness": {
+    "file": "happiness.mp3",
+    "text": "Happy anniversary!",
+    "textCn": "生日快乐！",
+    "sentenceId": 2044414
+  },
+  "f": {
+    "file": "f.mp3",
+    "text": "J.F. Kennedy was buried in Arlington Cemetery.",
+    "textCn": "约翰甘迺迪被安葬在阿靈頓公墓。",
+    "sentenceId": 72213
+  },
+  "mask": {
+    "file": "mask.mp3",
+    "text": "Tom removed his mask.",
+    "textCn": "汤姆脱了口罩。",
+    "sentenceId": 11627895
+  },
+  "pan": {
+    "file": "pan.mp3",
+    "text": "Where's the frying pan?",
+    "textCn": "炒鍋在哪裡？",
+    "sentenceId": 11276034
+  },
+  "hook": {
+    "file": "hook.mp3",
+    "text": "Hang your coat on the hook.",
+    "textCn": "把你的外套掛在鉤子上。",
+    "sentenceId": 21245
+  },
+  "weep": {
+    "file": "weep.mp3",
+    "text": "My mother did nothing but weep.",
+    "textCn": "我的母亲只是默默地哭泣。",
+    "sentenceId": 320662
+  },
+  "cure": {
+    "file": "cure.mp3",
+    "text": "Time cures all things.",
+    "textCn": "时间会治愈一切伤痛。",
+    "sentenceId": 3387162
+  },
+  "jam": {
+    "file": "jam.mp3",
+    "text": "She made jam from the apples.",
+    "textCn": "她用蘋果做了果醬。",
+    "sentenceId": 311145
+  },
+  "explorer": {
+    "file": "explorer.mp3",
+    "text": "Early explorers used the stars for navigation.",
+    "textCn": "古代的探險家用星星來辨別方向。",
+    "sentenceId": 272150
+  },
+  "ox": {
+    "file": "ox.mp3",
+    "text": "All that is allowed to Jupiter is not necessarily allowed to an ox.",
+    "textCn": "朱庇特能做的，公牛做不得。",
+    "sentenceId": 369529
+  },
+  "shanghai": {
+    "file": "shanghai.mp3",
+    "text": "The population of Shanghai is as large as that of Tokyo.",
+    "textCn": "上海的人口数量和东京相当。",
+    "sentenceId": 268296
+  },
+  "algebra": {
+    "file": "algebra.mp3",
+    "text": "Algebra is my favorite subject.",
+    "textCn": "代數是我最喜歡的科目。",
+    "sentenceId": 275391
+  },
+  "english": {
+    "file": "english.mp3",
+    "text": "He's English.",
+    "textCn": "他是英国人。",
+    "sentenceId": 1605502
+  },
+  "kindergarten": {
+    "file": "kindergarten.mp3",
+    "text": "I'm thinking about complaining about my son's teacher at the kindergarten.",
+    "textCn": "我想對兒子育幼院的保母抱怨。",
+    "sentenceId": 413549
+  },
+  "greek": {
+    "file": "greek.mp3",
+    "text": "This is Greek to me.",
+    "textCn": "看起来像天书。",
+    "sentenceId": 5722481
+  },
+  "are": {
+    "file": "are.mp3",
+    "text": "Are you certified?",
+    "textCn": "你有認證嗎？",
+    "sentenceId": 11931216
+  },
+  "no.": {
+    "file": "no_.mp3",
+    "text": "Oh, no!",
+    "textCn": "不会吧。",
+    "sentenceId": 1806256
+  },
+  "energy": {
+    "file": "energy.mp3",
+    "text": "I have no energy today.",
+    "textCn": "今天我沒有精神。",
+    "sentenceId": 321823
+  },
+  "anyway": {
+    "file": "anyway.mp3",
+    "text": "Thanks anyway.",
+    "textCn": "还是要说谢谢的。",
+    "sentenceId": 485099
   }
 }
